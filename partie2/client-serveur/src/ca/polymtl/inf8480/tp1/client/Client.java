@@ -5,66 +5,51 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.Arrays;
 
 import ca.polymtl.inf8480.tp1.shared.ServerInterface;
+import ca.polymtl.inf8480.tp1.shared.Group;
+
 
 public class Client {
+    private final static String LOGIN = "login";
+    private final static String GROUP_LIST = "get-group-list";
+    private final static String PUBLISH = "publish-group-list";
+    private final static String LOCK = "lock-group-list";
+    private final static String SEND = "send";
+    private final static String READ = "read";
+    private final static String LIST = "list";
+    private final static String DELETE = "delete";
+    private final static String SEARCH = "search";
+
+    private ServerInterface distantServerStub = null;
+	private String[] command;
+    private Group[] groups;
+
+
 	public static void main(String[] args) {
-		String distantHostname = null;
-		int x = -1;
 
 		if (args.length > 0) {
-			distantHostname = args[0];
-		}
-		if (args.length > 1) {
-			try {
-				x = Integer.parseInt(args[1]);
-			} catch (Exception e) {
-				x = -1;
-			}
-			if (x < 1 || x > 7) {
-				System.out.println("second argument needs to be between 1 and 7");
-				x = -1;
-			}
-		}
-
-		Client client = new Client(distantHostname, x);
-		client.run();
-	
+			Client client = new Client(args);
+		    client.run();
+		} else {
+            System.out.println("Enter a client command.");
+        }
 		
 	}
 
-	FakeServer localServer = null; // Pour tester la latence d'un appel de
-									// fonction normal.
-	private ServerInterface localServerStub = null;
-	private ServerInterface distantServerStub = null;
-	private byte[] data;
-
-	public Client(String distantServerHostname, int x) {
+	public Client(String[] command) {
 		super();
+        this.command = command;
 
 		if (System.getSecurityManager() == null) {
 			System.setSecurityManager(new SecurityManager());
 		}
 
-		localServer = new FakeServer();
-		localServerStub = loadServerStub("127.0.0.1");
-
-		if (distantServerHostname != null) {
-			distantServerStub = loadServerStub(distantServerHostname);
-		}
-		if (x != -1) {
-			//double size = Math.pow(10, x);
-			data = new byte[(int) Math.pow(10, x)];
-		}
+		distantServerStub = loadServerStub("127.0.0.1");	
 	}
 
 	private void run() {
-		appelNormal();
-
-		if (localServerStub != null) {
-			appelRMILocal();
-		}
 
 		if (distantServerStub != null) {
 			appelRMIDistant();
@@ -89,41 +74,91 @@ public class Client {
 		return stub;
 	}
 
-	private void appelNormal() {
-		long start = System.nanoTime();
-		byte[] result = localServer.execute(data);
-		long end = System.nanoTime();
-
-		System.out.println("Temps écoulé appel normal: " + (end - start)
-				+ " ns");
-		System.out.println("Résultat appel normal: " + result);
-	}
-
-	private void appelRMILocal() {
-		try {
-			long start = System.nanoTime();
-			byte[] result = localServerStub.execute(data);
-			long end = System.nanoTime();
-
-			System.out.println("Temps écoulé appel RMI local: " + (end - start)
-					+ " ns");
-			System.out.println("Résultat appel RMI local: " + result);
-		} catch (RemoteException e) {
-			System.out.println("Erreur: " + e.getMessage());
-		}
-	}
 
 	private void appelRMIDistant() {
 		try {
-			long start = System.nanoTime();
-			byte[] result = distantServerStub.execute(data);
-			long end = System.nanoTime();
-
-			System.out.println("Temps écoulé appel RMI distant: "
-					+ (end - start) + " ns");
-			System.out.println("Résultat appel RMI distant: " + result);
+			switch(command[0]) {
+                case LOGIN :
+                    login();
+                    break;
+                case GROUP_LIST :
+                    getGroupList();
+                    break;
+                case PUBLISH :
+                    publish();
+                    break;
+                case LOCK :
+                    lock();
+                    break;
+                case SEND :
+                    send();
+                    break;
+                case READ :
+                    read();
+                    break;
+                case LIST :
+                    list();
+                    break;
+                case DELETE :
+                    delete();
+                    break;
+                case SEARCH :
+                    search();
+                    break;
+                default :
+                    System.out.println("Invalid command");
+            }
 		} catch (RemoteException e) {
 			System.out.println("Erreur: " + e.getMessage());
 		}
 	}
+
+    private void login() throws RemoteException {
+        if (command.length < 3) {
+            System.out.println("Not enough arguments for the login command.");
+            return;
+        }          
+        if (command.length > 3)
+        {
+            System.out.println("Too many arguments for the login command.");
+            return;
+        }
+        System.out.println(distantServerStub.openSession(command[1],command[2])); 
+    }
+
+    private void getGroupList()  throws RemoteException {
+        Group[] groups = null;
+        groups = distantServerStub.getGroupList(Arrays.deepHashCode(groups));
+        if (groups != null)
+            this.groups = groups;
+    }
+
+    private void publish() throws RemoteException {
+        
+    }
+
+    private void lock()  throws RemoteException {
+        
+    }
+
+    private void send()  throws RemoteException {
+        
+    }
+
+    private void read()  throws RemoteException {
+        
+    }
+
+    private void list()  throws RemoteException {
+        
+    }
+
+    private void delete()  throws RemoteException {
+        
+    }
+
+    private void search()  throws RemoteException {
+        
+    }
+
 }
