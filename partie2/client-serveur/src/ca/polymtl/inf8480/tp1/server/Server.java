@@ -27,6 +27,7 @@ public class Server implements ServerInterface {
 
     private ArrayList<LogInfo> users;
     private ArrayList<ArrayList<String>> groups;
+    private boolean groupListLocked = false;
 
 	public static void main(String[] args) {
 		Server server = new Server();
@@ -102,11 +103,24 @@ public class Server implements ServerInterface {
 	}
 
     @Override
-	public void pushGroupList(String[] groupsDef) throws RemoteException {
+	public String pushGroupList(ArrayList<ArrayList<String>> groupsDef) throws RemoteException {
+        if (groupListLocked) {
+            groups = groupsDef;
+            groupListLocked = false;
+            return "Distant group list successfully updated.";
+        } else {
+            return "Group list needs to be locked for this.";
+        }
 	}
 
     @Override
-	public void lockGroupList() throws RemoteException {
+	public String lockGroupList() throws RemoteException {
+        if (!groupListLocked) {
+            groupListLocked = true;
+            return "Group list is now locked.";
+        } else {
+            return "Group list already locked by another user.";
+        }
 	}
 
     @Override
@@ -126,6 +140,6 @@ public class Server implements ServerInterface {
 	}
 
     @Override
-	public void searchMail(String[] keywords) throws RemoteException {
+	public void searchMail(ArrayList<String> keywords) throws RemoteException {
 	}
 }

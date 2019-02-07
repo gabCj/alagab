@@ -156,11 +156,13 @@ public class Client {
     private void publish() throws RemoteException {
         if (!checkLoggedIn())
             return;
+        System.out.println(distantServerStub.pushGroupList(groups));
     }
 
     private void lock() throws RemoteException {
         if (!checkLoggedIn())
             return;
+        System.out.println(distantServerStub.lockGroupList());
     }
 
     private void send() throws RemoteException {

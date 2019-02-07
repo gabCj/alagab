@@ -10,9 +10,9 @@ public interface ServerInterface extends Remote {
 
     ArrayList<ArrayList<String>> getGroupList(int checksum) throws RemoteException;
 
-    void pushGroupList(String[] groupsDef) throws RemoteException;
+    String pushGroupList(ArrayList<ArrayList<String>> groupsDef) throws RemoteException;
 
-    void lockGroupList() throws RemoteException;
+    String lockGroupList() throws RemoteException;
 
     void sendMail(String subjet, String addrDest, String content) throws RemoteException;
 
@@ -22,5 +22,5 @@ public interface ServerInterface extends Remote {
 
     void deleteMail(int id) throws RemoteException;
 
-    void searchMail(String[] keywords) throws RemoteException;
+    void searchMail(ArrayList<String> keywords) throws RemoteException;
 }
