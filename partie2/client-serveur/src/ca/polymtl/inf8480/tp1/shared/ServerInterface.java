@@ -15,7 +15,7 @@ public interface ServerInterface extends Remote {
 
     String lockGroupList() throws RemoteException;
 
-    void sendMail(String subjet, String addrDest, String content) throws RemoteException;
+    String sendMail(String subjet, String addrDest, String content) throws RemoteException;
 
     void listMails(boolean justUnread) throws RemoteException;
 

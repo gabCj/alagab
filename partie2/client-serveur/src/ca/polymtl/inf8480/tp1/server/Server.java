@@ -15,19 +15,19 @@ import java.io.*;
 import ca.polymtl.inf8480.tp1.shared.ServerInterface;
 
 class LogInfo {
-    public String email;
     public String password;
+    public Map<String,String> emails;
 
-    LogInfo(String email, String password)
+    LogInfo(String password)
     {
-        this.email = email;
         this.password = password;
+        this.emails = new HashMap();
     } 
 } 
 
 public class Server implements ServerInterface {
 
-    private ArrayList<LogInfo> users;
+    private Map<String,LogInfo> users;
     private Map<String,ArrayList<String>> groups;
     private boolean groupListLocked = false;
 
@@ -38,15 +38,15 @@ public class Server implements ServerInterface {
 
 	public Server() {
         super();
-        users = new ArrayList<LogInfo>();
-        users.add(new LogInfo("Gabriel","123"));
-        users.add(new LogInfo("Aladin","123"));
-        users.add(new LogInfo("Rafael","123"));
-        users.add(new LogInfo("Michel","123"));
-        users.add(new LogInfo("Adel","123"));
+        users = new HashMap();
+        users.put("Gabriel", new LogInfo("123"));
+        users.put("Aladin", new LogInfo("123"));
+        users.put("Rafael", new LogInfo("123"));
+        users.put("Michel", new LogInfo("123"));
+        users.put("Adel", new LogInfo("123"));
         groups = new HashMap();
-        groups.put("group1", new ArrayList<String>(Arrays.asList(users.get(0).email, users.get(1).email, users.get(2).email)));
-        groups.put("group2", new ArrayList<String>(Arrays.asList(users.get(3).email, users.get(4).email)));
+        groups.put("group1", new ArrayList<String>(Arrays.asList("Gabriel", "Aladin", "Rafael")));
+        groups.put("group2", new ArrayList<String>(Arrays.asList("Michel", "Adel")));
 	}
 
 	private void run() {
@@ -77,17 +77,16 @@ public class Server implements ServerInterface {
 	@Override
 	public String openSession(String login, String password) throws RemoteException {
         boolean foundUser = false;
-        for (LogInfo info : users ) {
-            if (info.email.equals(login)) {
-                if (info.password.equals(password)) {
-                    foundUser = true;
-                    return "Successful login!";
-                } else {
-                    return "Wrong password.";
-                }
+        LogInfo info = users.get(login);
+        if (info != null) {
+            if (info.password.equals(password)) {
+                foundUser = true;
+                return "Successful login!";
+            } else {
+                return "Wrong password.";
             }
         }
-        
+          
         if (!foundUser)
             return "Wrong email.";
 
@@ -124,7 +123,28 @@ public class Server implements ServerInterface {
 	}
 
     @Override
-	public void sendMail(String subjet, String addrDest, String content) throws RemoteException {
+	public String sendMail(String subjet, String addrDest, String content) throws RemoteException {
+        String status = "There was an error.";
+        ArrayList<String> group = groups.get(addrDest);
+        LogInfo userInfo;
+        if (group != null) {
+            status = "Sent mail to group.";
+            for (String user : group) {
+                userInfo = users.get(user);
+                if (userInfo != null) {
+                    userInfo.emails.put(subjet,content);
+                }
+            }
+        }
+        else {
+            userInfo = users.get(addrDest);
+            if (userInfo != null) {
+                status = "Sent mail to user.";
+                userInfo.emails.put(subjet,content);
+            }
+        }
+
+        return status;
 	}
 
     @Override
