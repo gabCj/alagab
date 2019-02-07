@@ -5,10 +5,12 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.util.Arrays;
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.io.*;
+import java.util.Objects;
 
 import ca.polymtl.inf8480.tp1.shared.ServerInterface;
-import ca.polymtl.inf8480.tp1.shared.Group;
 
 
 public class Client {
@@ -24,7 +26,7 @@ public class Client {
 
     private ServerInterface distantServerStub = null;
 	private String[] command;
-    private Group[] groups;
+    private ArrayList<ArrayList<String>> groups;
 
 
 	public static void main(String[] args) {
@@ -41,6 +43,7 @@ public class Client {
 	public Client(String[] command) {
 		super();
         this.command = command;
+        groups = new ArrayList<ArrayList<String>>();
 
 		if (System.getSecurityManager() == null) {
 			System.setSecurityManager(new SecurityManager());
@@ -123,42 +126,78 @@ public class Client {
             System.out.println("Too many arguments for the login command.");
             return;
         }
-        System.out.println(distantServerStub.openSession(command[1],command[2])); 
+        String loginState = distantServerStub.openSession(command[1],command[2]);
+        System.out.println(loginState); 
+        if (loginState.equals("Successful login!")) {
+            try {
+                File file = new File("./loginToken.txt");
+                BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+                writer.write("Successful login!");
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            
+        }
     }
 
     private void getGroupList()  throws RemoteException {
-        Group[] groups = null;
-        groups = distantServerStub.getGroupList(Arrays.deepHashCode(groups));
-        if (groups != null)
-            this.groups = groups;
+        if (!checkLoggedIn())
+            return;
+        System.out.println(Objects.hash(this.groups));
+        ArrayList<ArrayList<String>> tempGroups = null;
+        tempGroups = distantServerStub.getGroupList(Objects.hash(this.groups));
+        if (tempGroups != null)
+            this.groups = tempGroups;
+        //System.out.println(Objects.hash(this.groups));
+        System.out.println(Objects.hash(tempGroups));
     }
 
     private void publish() throws RemoteException {
-        
+        if (!checkLoggedIn())
+            return;
     }
 
-    private void lock()  throws RemoteException {
-        
+    private void lock() throws RemoteException {
+        if (!checkLoggedIn())
+            return;
     }
 
-    private void send()  throws RemoteException {
-        
+    private void send() throws RemoteException {
+        if (!checkLoggedIn())
+            return;
     }
 
-    private void read()  throws RemoteException {
-        
+    private void read() throws RemoteException {
+        if (!checkLoggedIn())
+            return;
     }
 
-    private void list()  throws RemoteException {
-        
+    private void list() throws RemoteException {
+        if (!checkLoggedIn())
+            return;
     }
 
-    private void delete()  throws RemoteException {
-        
+    private void delete() throws RemoteException {
+        if (!checkLoggedIn())
+            return;
     }
 
-    private void search()  throws RemoteException {
-        
+    private void search() throws RemoteException {
+        if (!checkLoggedIn())
+            return;
+    }
+
+
+    //check if logged in
+    private boolean checkLoggedIn() {
+        File tmpDir = new File("./loginToken.txt");
+        if(tmpDir.exists()) {
+            return true;
+        } else {
+            System.out.println("You are not logged in.");
+            return false;
+        }
     }
 
 }
