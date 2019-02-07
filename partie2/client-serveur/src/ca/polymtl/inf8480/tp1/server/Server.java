@@ -6,6 +6,8 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Arrays;
 import java.util.Objects;
 import java.io.*;
@@ -26,7 +28,7 @@ class LogInfo {
 public class Server implements ServerInterface {
 
     private ArrayList<LogInfo> users;
-    private ArrayList<ArrayList<String>> groups;
+    private Map<String,ArrayList<String>> groups;
     private boolean groupListLocked = false;
 
 	public static void main(String[] args) {
@@ -42,9 +44,9 @@ public class Server implements ServerInterface {
         users.add(new LogInfo("Rafael","123"));
         users.add(new LogInfo("Michel","123"));
         users.add(new LogInfo("Adel","123"));
-        groups = new ArrayList<ArrayList<String>>();
-        groups.add(new ArrayList<String>(Arrays.asList(users.get(0).email, users.get(1).email, users.get(2).email)));
-        groups.add(new ArrayList<String>(Arrays.asList(users.get(3).email, users.get(4).email)));
+        groups = new HashMap();
+        groups.put("group1", new ArrayList<String>(Arrays.asList(users.get(0).email, users.get(1).email, users.get(2).email)));
+        groups.put("group2", new ArrayList<String>(Arrays.asList(users.get(3).email, users.get(4).email)));
 	}
 
 	private void run() {
@@ -93,17 +95,15 @@ public class Server implements ServerInterface {
 	}
 
     @Override
-	public ArrayList<ArrayList<String>> getGroupList(int checksum) throws RemoteException {
-        System.out.println(checksum);
-        System.out.println(Objects.hash(groups));
-        if (Objects.hash(groups) != checksum)
+	public Map<String,ArrayList<String>> getGroupList(int checksum) throws RemoteException {
+        if (groups.hashCode() != checksum)
             return groups;
         else
             return null;
 	}
 
     @Override
-	public String pushGroupList(ArrayList<ArrayList<String>> groupsDef) throws RemoteException {
+	public String pushGroupList(Map<String,ArrayList<String>> groupsDef) throws RemoteException {
         if (groupListLocked) {
             groups = groupsDef;
             groupListLocked = false;

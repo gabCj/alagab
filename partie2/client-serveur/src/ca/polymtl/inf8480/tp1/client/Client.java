@@ -7,6 +7,8 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.io.*;
 import java.util.Objects;
 
@@ -26,7 +28,7 @@ public class Client {
 
     private ServerInterface distantServerStub = null;
 	private String[] command;
-    private ArrayList<ArrayList<String>> groups;
+    private Map<String,ArrayList<String>> groups;
 
 
 	public static void main(String[] args) {
@@ -43,7 +45,7 @@ public class Client {
 	public Client(String[] command) {
 		super();
         this.command = command;
-        groups = new ArrayList<ArrayList<String>>();
+        groups = new HashMap();
 
 		if (System.getSecurityManager() == null) {
 			System.setSecurityManager(new SecurityManager());
@@ -144,13 +146,10 @@ public class Client {
     private void getGroupList()  throws RemoteException {
         if (!checkLoggedIn())
             return;
-        System.out.println(Objects.hash(this.groups));
-        ArrayList<ArrayList<String>> tempGroups = null;
-        tempGroups = distantServerStub.getGroupList(Objects.hash(this.groups));
+        Map<String,ArrayList<String>> tempGroups = new HashMap();
+        tempGroups = distantServerStub.getGroupList(groups.hashCode());
         if (tempGroups != null)
             this.groups = tempGroups;
-        //System.out.println(Objects.hash(this.groups));
-        System.out.println(Objects.hash(tempGroups));
     }
 
     private void publish() throws RemoteException {
