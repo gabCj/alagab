@@ -3,6 +3,7 @@ package ca.polymtl.inf8480.tp1.client;
 import java.rmi.AccessException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.server.ServerNotActiveException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.net.InetAddress;
@@ -13,9 +14,12 @@ import java.io.*;
 import java.util.Objects;
 
 import ca.polymtl.inf8480.tp1.shared.ServerInterface;
+import ca.polymtl.inf8480.tp1.shared.Mail;
 
 
 public class Client {
+private final static boolean ONLY_UNREAD_MAIL = false;
+
     private final static String LOGIN = "login";
     private final static String GROUP_LIST = "get-group-list";
     private final static String PUBLISH = "publish-group-list";
@@ -57,7 +61,12 @@ public class Client {
 	private void run() {
 
 		if (distantServerStub != null) {
-			appelRMIDistant();
+            try {
+                appelRMIDistant();
+            } catch (ServerNotActiveException e) {
+                e.printStackTrace();
+            }
+			
 		}
 	}
 
@@ -80,7 +89,7 @@ public class Client {
 	}
 
 
-	private void appelRMIDistant() {
+	private void appelRMIDistant() throws ServerNotActiveException {
 		try {
 			switch(command[0]) {
                 case LOGIN :
@@ -118,7 +127,7 @@ public class Client {
 		}
 	}
 
-    private void login() throws RemoteException {
+    private void login() throws RemoteException, ServerNotActiveException {
         if (command.length < 3) {
             System.out.println("Not enough arguments for the login command.");
             return;
@@ -143,61 +152,96 @@ public class Client {
         }
     }
 
-    private void getGroupList()  throws RemoteException {
-        if (!checkLoggedIn())
-            return;
+    private void getGroupList()  throws RemoteException, ServerNotActiveException {
         Map<String,ArrayList<String>> tempGroups = new HashMap();
         tempGroups = distantServerStub.getGroupList(groups.hashCode());
         if (tempGroups != null)
             this.groups = tempGroups;
     }
 
-    private void publish() throws RemoteException {
-        if (!checkLoggedIn())
-            return;
+    private void publish() throws RemoteException, ServerNotActiveException {
         System.out.println(distantServerStub.pushGroupList(groups));
     }
 
-    private void lock() throws RemoteException {
-        if (!checkLoggedIn())
-            return;
+    private void lock() throws RemoteException, ServerNotActiveException {
         System.out.println(distantServerStub.lockGroupList());
     }
 
-    private void send() throws RemoteException {
-        if (!checkLoggedIn())
+    private void send() throws RemoteException, ServerNotActiveException {
+        if (command.length < 4) {
+            System.out.println("Not enough arguments for the send mail command.");
             return;
+        }          
+        if (command.length > 4)
+        {
+            System.out.println("Too many arguments for the send mail command.");
+            return;
+        }
+
+        System.out.println(distantServerStub.sendMail(command[1], command[2], command[3]));
     }
 
-    private void read() throws RemoteException {
-        if (!checkLoggedIn())
-            return;
-    }
-
-    private void list() throws RemoteException {
-        if (!checkLoggedIn())
-            return;
-    }
-
-    private void delete() throws RemoteException {
-        if (!checkLoggedIn())
-            return;
-    }
-
-    private void search() throws RemoteException {
-        if (!checkLoggedIn())
-            return;
-    }
-
-
-    //check if logged in
-    private boolean checkLoggedIn() {
-        File tmpDir = new File("./loginToken.txt");
-        if(tmpDir.exists()) {
-            return true;
-        } else {
+    private void list() throws RemoteException, ServerNotActiveException {
+        ArrayList<Mail> mailsRequested = distantServerStub.listMails(ONLY_UNREAD_MAIL);
+        if (mailsRequested == null) {
             System.out.println("You are not logged in.");
-            return false;
+            return;
+        }
+            
+        for (Mail mail : mailsRequested) {
+            System.out.println(mail.asList());
+        }
+    }
+
+    private void read() throws RemoteException, ServerNotActiveException {
+        if (command.length < 2) {
+            System.out.println("Not enough arguments for the read mail command.");
+            return;
+        }          
+        if (command.length > 2)
+        {
+            System.out.println("Too many arguments for the read mail command.");
+            return;
+        }
+        Mail requestedMail = distantServerStub.readMail(command[1]);
+        if (requestedMail == null) {
+            System.out.println("Could not find mail.");
+            return;
+        }
+        System.out.println(requestedMail.toString());
+    }
+
+    private void delete() throws RemoteException, ServerNotActiveException {
+        if (command.length < 2) {
+            System.out.println("Not enough arguments for the delete mail command.");
+            return;
+        }          
+        if (command.length > 2)
+        {
+            System.out.println("Too many arguments for the delete mail command.");
+            return;
+        }
+        System.out.println(distantServerStub.deleteMail(command[1]));
+    }
+
+    private void search() throws RemoteException, ServerNotActiveException {
+        if (command.length < 2) {
+            System.out.println("You need at least one keyword.");
+            return;
+        } 
+
+        ArrayList<String> keywords = new ArrayList<String>();
+        for (int i = 1; i < command.length; i++) {
+            keywords.add(command[i]);
+        }
+
+        ArrayList<Mail> mailsFound = distantServerStub.searchMail(keywords);
+        if (mailsFound == null) {
+            System.out.println("You are not logged in.");
+        } else {
+            for (Mail mail : mailsFound) {
+                System.out.println(mail.asList());
+            }
         }
     }
 

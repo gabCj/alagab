@@ -2,26 +2,27 @@ package ca.polymtl.inf8480.tp1.shared;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+import java.rmi.server.ServerNotActiveException;
 import java.util.ArrayList;
 import java.util.Map;
 
 public interface ServerInterface extends Remote {
 
-	String openSession(String login, String password) throws RemoteException;
+	String openSession(String login, String password) throws RemoteException, ServerNotActiveException;
 
-    Map<String,ArrayList<String>> getGroupList(int checksum) throws RemoteException;
+    Map<String,ArrayList<String>> getGroupList(int checksum) throws RemoteException, ServerNotActiveException;
 
-    String pushGroupList(Map<String,ArrayList<String>> groupsDef) throws RemoteException;
+    String pushGroupList(Map<String,ArrayList<String>> groupsDef) throws RemoteException, ServerNotActiveException;
 
-    String lockGroupList() throws RemoteException;
+    String lockGroupList() throws RemoteException, ServerNotActiveException;
 
-    String sendMail(String subjet, String addrDest, String content) throws RemoteException;
+    String sendMail(String subjet, String addrDest, String content) throws RemoteException, ServerNotActiveException;
 
-    void listMails(boolean justUnread) throws RemoteException;
+    ArrayList<Mail> listMails(boolean justUnread) throws RemoteException, ServerNotActiveException;
 
-    void readMail(int id) throws RemoteException;
+    Mail readMail(String id) throws RemoteException, ServerNotActiveException;
 
-    void deleteMail(int id) throws RemoteException;
+    String deleteMail(String id) throws RemoteException, ServerNotActiveException;
 
-    void searchMail(ArrayList<String> keywords) throws RemoteException;
+    ArrayList<Mail> searchMail(ArrayList<String> keywords) throws RemoteException, ServerNotActiveException;
 }
