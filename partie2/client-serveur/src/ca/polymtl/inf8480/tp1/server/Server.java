@@ -47,18 +47,14 @@ public class Server implements ServerInterface {
 	public Server() {
         super();
         users = new HashMap();
-        users.put("Gabriel", new LogInfo("123"));
-        users.put("Aladin", new LogInfo("123"));
-        users.put("Rafael", new LogInfo("123"));
-        users.put("Michel", new LogInfo("123"));
-        users.put("Adel", new LogInfo("123"));
         groups = new HashMap();
-        groups.put("group1", new ArrayList<String>(Arrays.asList("Gabriel", "Aladin", "Rafael")));
-        groups.put("group2", new ArrayList<String>(Arrays.asList("Michel", "Adel")));
         loggedInUsers = new ArrayList<String>();
 	}
 
 	private void run() {
+        loadUsers();
+        loadGroups();
+
 		if (System.getSecurityManager() == null) {
 			System.setSecurityManager(new SecurityManager());
 		}
@@ -78,7 +74,39 @@ public class Server implements ServerInterface {
 		} catch (Exception e) {
 			System.err.println("Erreur: " + e.getMessage());
 		}
-	}
+    }
+    
+    private void loadUsers() {
+        try {
+            BufferedReader userDBreader = new BufferedReader(new FileReader("./users.txt"));
+            String userInfo;
+            while ((userInfo = userDBreader.readLine()) != null) {
+                String[] parsedInfo = userInfo.split(" ");
+                if (parsedInfo.length > 1)
+                    users.put(parsedInfo[0], new LogInfo(parsedInfo[1]));
+            }
+            userDBreader.close();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void loadGroups() {
+        try {
+            BufferedReader groupDBreader = new BufferedReader(new FileReader("./groups.txt"));
+            String groupInfo;
+            while ((groupInfo = groupDBreader.readLine()) != null) {
+                String[] parsedInfo = groupInfo.split(" ");
+                groups.put(parsedInfo[0], new ArrayList<String>());
+                for (int i = 1; i < parsedInfo.length; i++) {
+                    groups.get(parsedInfo[0]).add(parsedInfo[i]);
+                }
+            }
+            groupDBreader.close();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 	/*
 	 * Méthodes accessible par RMI.
@@ -148,6 +176,7 @@ public class Server implements ServerInterface {
 
         // status changed if addrDest exists
         String status = "Destination address does not exist.";
+
         ArrayList<String> group = groups.get(addrDest);
         LogInfo userInfo;
         if (group != null) {
