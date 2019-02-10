@@ -20,23 +20,23 @@ import ca.polymtl.inf8480.tp1.shared.ServerInterface;
 import ca.polymtl.inf8480.tp1.shared.Mail;
 
 class LogInfo {
-    public String currentHostName;
     public String password;
     public ArrayList<Mail> emails;
 
     LogInfo(String password)
     {
-        this.currentHostName = "";
         this.password = password;
         this.emails = new ArrayList<Mail>();
     } 
 } 
 
 public class Server implements ServerInterface {
+    private final static String GROUPS_DB_FILE_LOCATION = "./groupsServerDB.txt";
+    private final static String USERS_DB_FILE_LOCATION = "./usersServerDB.txt";
 
     private Map<String,LogInfo> users;
     private Map<String,ArrayList<String>> groups;
-    private ArrayList<String> loggedInUsers;
+    private Map<String,String> loggedInUsers;
     private boolean groupListLocked = false;
 
 	public static void main(String[] args) {
@@ -48,7 +48,7 @@ public class Server implements ServerInterface {
         super();
         users = new HashMap();
         groups = new HashMap();
-        loggedInUsers = new ArrayList<String>();
+        loggedInUsers = new HashMap();
 	}
 
 	private void run() {
@@ -78,7 +78,7 @@ public class Server implements ServerInterface {
     
     private void loadUsers() {
         try {
-            BufferedReader userDBreader = new BufferedReader(new FileReader("./users.txt"));
+            BufferedReader userDBreader = new BufferedReader(new FileReader(USERS_DB_FILE_LOCATION));
             String userInfo;
             while ((userInfo = userDBreader.readLine()) != null) {
                 String[] parsedInfo = userInfo.split(" ");
@@ -93,7 +93,7 @@ public class Server implements ServerInterface {
 
     private void loadGroups() {
         try {
-            BufferedReader groupDBreader = new BufferedReader(new FileReader("./groups.txt"));
+            BufferedReader groupDBreader = new BufferedReader(new FileReader(GROUPS_DB_FILE_LOCATION));
             String groupInfo;
             while ((groupInfo = groupDBreader.readLine()) != null) {
                 String[] parsedInfo = groupInfo.split(" ");
@@ -108,6 +108,23 @@ public class Server implements ServerInterface {
         }
     }
 
+    private void updateGroupsDB() {
+        try {
+            PrintWriter pw = new PrintWriter(GROUPS_DB_FILE_LOCATION);
+            for (String group : groups.keySet()) {
+                pw.write(group + " ");
+                for (String user : groups.get(group)) {
+                    pw.write(user + " ");
+                }
+                pw.write("\n");
+            }
+            pw.close();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+        
+    }
+
 	/*
 	 * Méthodes accessible par RMI.
 	 */
@@ -118,8 +135,7 @@ public class Server implements ServerInterface {
         if (info != null) {
             if (info.password.equals(password)) {
                 foundUser = true;
-                loggedInUsers.add(RemoteServer.getClientHost());
-                info.currentHostName = RemoteServer.getClientHost();
+                loggedInUsers.put(RemoteServer.getClientHost(),login);
                 return "Successful login!";
             } else {
                 return "Wrong password.";
@@ -134,34 +150,26 @@ public class Server implements ServerInterface {
 
     @Override
 	public Map<String,ArrayList<String>> getGroupList(int checksum) throws RemoteException, ServerNotActiveException {
-        if (!loggedInUsers.contains(RemoteServer.getClientHost()))
+        if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return null;
 
-        System.out.println("checksum = " + checksum);
-        System.out.println("group hashcode = " + groups.hashCode());
-        if (groups.hashCode() != checksum) {
-           /* Map<String,ArrayList<String>> returnGroup = new HashMap();
-            for (String group : groups.keySet()) {
-                returnGroup.put(group,groups.get(group));
-            }
-            return returnGroup;*/
+        if (groups.hashCode() != checksum)
             return groups;
-        }
             
         return null;
 	}
 
     @Override
 	public String pushGroupList(Map<String,ArrayList<String>> groupsDef) throws RemoteException, ServerNotActiveException {
-        if (!loggedInUsers.contains(RemoteServer.getClientHost()))
+        if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return "You are not logged in.";
 
         if (groupListLocked) {
             groups = new HashMap();
             for (String group : groupsDef.keySet()) {
                 groups.put(group,groupsDef.get(group));
-                System.out.println(group);
             }
+            updateGroupsDB();
             groupListLocked = false;
             return "Distant group list successfully updated.";
         } else {
@@ -171,7 +179,7 @@ public class Server implements ServerInterface {
 
     @Override
 	public String lockGroupList() throws RemoteException, ServerNotActiveException {
-        if (!loggedInUsers.contains(RemoteServer.getClientHost()))
+        if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return "You are not logged in.";
 
         if (!groupListLocked) {
@@ -184,11 +192,14 @@ public class Server implements ServerInterface {
 
     @Override
 	public String sendMail(String subjet, String addrDest, String content) throws RemoteException, ServerNotActiveException {
-        if (!loggedInUsers.contains(RemoteServer.getClientHost()))
+        if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return "You are not logged in.";
 
         // status changed if addrDest exists
         String status = "Destination address does not exist.";
+
+        //find hostname's addr
+        String userAddr = loggedInUsers.get(RemoteServer.getClientHost());
 
         ArrayList<String> group = groups.get(addrDest);
         LogInfo userInfo;
@@ -198,7 +209,7 @@ public class Server implements ServerInterface {
                 userInfo = users.get(user);
                 if (userInfo != null) {
                     userInfo.emails.add(
-                        new Mail(subjet, content, Calendar.getInstance().getTime().toString(), RemoteServer.getClientHost()));
+                        new Mail(subjet, content, Calendar.getInstance().getTime().toString(), userAddr));
                 }
             }
         }
@@ -207,7 +218,7 @@ public class Server implements ServerInterface {
             if (userInfo != null) {
                 status = "Sent mail to user.";
                 userInfo.emails.add(
-                    new Mail(subjet, content, Calendar.getInstance().getTime().toString(), RemoteServer.getClientHost()));
+                    new Mail(subjet, content, Calendar.getInstance().getTime().toString(), userAddr));
             }
         }
 
@@ -216,26 +227,20 @@ public class Server implements ServerInterface {
 
     @Override
 	public ArrayList<Mail> listMails(boolean justUnread) throws RemoteException, ServerNotActiveException {
-        if (!loggedInUsers.contains(RemoteServer.getClientHost()))
+        if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return null;
-
+        
         ArrayList<Mail> mailsRequested = new ArrayList<Mail>();
-        Iterator<Map.Entry<String, LogInfo>> it = users.entrySet().iterator();
+        ArrayList<Mail> availableMails = users.get(loggedInUsers.get(RemoteServer.getClientHost())).emails;
 
-        while (it.hasNext()) {
-            Map.Entry<String, LogInfo> pair = it.next();
-            if (!pair.getValue().currentHostName.isEmpty() && pair.getValue().currentHostName.equals(RemoteServer.getClientHost())) {
-                if (justUnread) {
-                    for (Mail mail : pair.getValue().emails) {
-                        if (!mail.hasBeenRead) {
-                            mailsRequested.add(mail);
-                        }
-                    }
-                } else {
-                    mailsRequested = pair.getValue().emails;
+        if (justUnread) {
+            for (Mail mail : availableMails) {
+                if (!mail.hasBeenRead) {
+                    mailsRequested.add(mail);
                 }
-                break;
             }
+        } else {
+            mailsRequested = availableMails;
         }
 
         return mailsRequested;
@@ -243,21 +248,15 @@ public class Server implements ServerInterface {
 
     @Override
 	public Mail readMail(String id) throws RemoteException, ServerNotActiveException {
-        if (!loggedInUsers.contains(RemoteServer.getClientHost()))
+        if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return null;
 
-        Iterator<Map.Entry<String, LogInfo>> it = users.entrySet().iterator();
+        ArrayList<Mail> userMails = users.get(loggedInUsers.get(RemoteServer.getClientHost())).emails;
         Mail requestedMail = null;
-
-        while (it.hasNext()) {
-            Map.Entry<String, LogInfo> pair = it.next();
-            if (!pair.getValue().currentHostName.isEmpty() && pair.getValue().currentHostName.equals(RemoteServer.getClientHost())) {
-                for (Mail mail : pair.getValue().emails) {
-                    if (mail.subject.equals(id)) {
-                        mail.hasBeenRead = true;
-                        requestedMail = mail;
-                    }
-                }
+        for (Mail mail : userMails) {
+            if (mail.subject.equals(id)) {
+                mail.hasBeenRead = true;
+                requestedMail = mail;
             }
         }
 
@@ -266,21 +265,17 @@ public class Server implements ServerInterface {
 
     @Override
 	public String deleteMail(String id) throws RemoteException, ServerNotActiveException {
-        if (!loggedInUsers.contains(RemoteServer.getClientHost()))
+        if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return "You are not logged in.";
         
         //return message will change if mail is found
         String returnMessage = "Could not find mail.";
-        Iterator<Map.Entry<String, LogInfo>> it = users.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<String, LogInfo> pair = it.next();
-            if (!pair.getValue().currentHostName.isEmpty() && pair.getValue().currentHostName.equals(RemoteServer.getClientHost())) {
-                for (Mail mail : pair.getValue().emails) {
-                    if (mail.subject.equals(id)) {
-                        pair.getValue().emails.remove(mail);
-                        returnMessage = "Mail successfully deleted";
-                    }
-                }
+
+        ArrayList<Mail> userMails = users.get(loggedInUsers.get(RemoteServer.getClientHost())).emails;
+        for (Mail mail : userMails) {
+            if (mail.subject.equals(id)) {
+                userMails.remove(mail);
+                returnMessage = "Mail successfully deleted";
             }
         }
 
@@ -289,24 +284,20 @@ public class Server implements ServerInterface {
 
     @Override
 	public ArrayList<Mail> searchMail(ArrayList<String> keywords) throws RemoteException, ServerNotActiveException {
-        if (!loggedInUsers.contains(RemoteServer.getClientHost()))
+        if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return null;
+
         ArrayList<Mail> foundMails = new ArrayList<Mail>();
+        ArrayList<Mail> userMails = users.get(loggedInUsers.get(RemoteServer.getClientHost())).emails;
 
         for (String keyword : keywords) {
-            Iterator<Map.Entry<String, LogInfo>> it = users.entrySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry<String, LogInfo> pair = it.next();
-                if (!pair.getValue().currentHostName.isEmpty() && pair.getValue().currentHostName.equals(RemoteServer.getClientHost())) {
-                    for (Mail mail : pair.getValue().emails) {
-                        if (mail.content.contains(keyword) && !foundMails.contains(mail)) {
-                            foundMails.add(mail);
-                        }
-                    }
+            for (Mail mail : userMails) {
+                if (mail.content.contains(keyword) && !foundMails.contains(mail)) {
+                    foundMails.add(mail);
                 }
             }
         }
-        
+   
         return foundMails;
     }
     

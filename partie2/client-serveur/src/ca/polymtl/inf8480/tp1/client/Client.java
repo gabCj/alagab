@@ -18,10 +18,13 @@ import ca.polymtl.inf8480.tp1.shared.Mail;
 
 
 public class Client {
+    //info app client
+    private final static String GROUPS_DB_FILE_LOCATION = "./groupsClientDB.txt";
     private final static String DISTANT_SERVER = "132.207.89.143";
     private final static String LOCAL_SERVER = "127.0.0.1";
     private final static boolean ONLY_UNREAD_MAIL = false;
 
+    //commandes client
     private final static String LOGIN = "login";
     private final static String GROUP_LIST = "get-group-list";
     private final static String PUBLISH = "publish-group-list";
@@ -31,6 +34,8 @@ public class Client {
     private final static String LIST = "list";
     private final static String DELETE = "delete";
     private final static String SEARCH = "search";
+    private final static String JOIN = "join-group";
+    private final static String CREATE = "create-group";
 
     private ServerInterface distantServerStub = null;
 	private String[] command;
@@ -61,15 +66,12 @@ public class Client {
 	}
 
 	private void run() {
-
-		if (distantServerStub != null) {
-            try {
-                appelRMIDistant();
-            } catch (ServerNotActiveException e) {
-                e.printStackTrace();
-            }
-			
-		}
+        loadGroups();
+        try {
+            appelRMIDistant();
+        } catch (ServerNotActiveException e) {
+            System.out.println("Erreur: " + e.getMessage());
+        }        
 	}
 
 	private ServerInterface loadServerStub(String hostname) {
@@ -121,14 +123,24 @@ public class Client {
                 case SEARCH :
                     search();
                     break;
+                case JOIN :
+                    join();
+                    break;
+                case CREATE :
+                    create();
+                    break;
                 default :
                     System.out.println("Invalid command");
             }
 		} catch (RemoteException e) {
 			System.out.println("Erreur: " + e.getMessage());
 		}
-	}
+    }
+    
 
+    /*
+    Methodes qui font un appel au serveur par RMI
+    */
     private void login() throws RemoteException, ServerNotActiveException {
         if (command.length < 3) {
             System.out.println("Not enough arguments for the login command.");
@@ -157,13 +169,16 @@ public class Client {
     private void getGroupList()  throws RemoteException, ServerNotActiveException {
         Map<String,ArrayList<String>> tempGroups = new HashMap();
         tempGroups = distantServerStub.getGroupList(groups.hashCode());
-        if (tempGroups != null)
+        if (tempGroups != null) {
             this.groups = tempGroups;
-       
+            updateGroupsDB();
+        }
+                 
+        System.out.println("Groups are :\n");    
         for (String group : this.groups.keySet()) {
             System.out.println(group);
         }
-        
+        System.out.println("\n"); 
     }
 
     private void publish() throws RemoteException, ServerNotActiveException {
@@ -178,14 +193,12 @@ public class Client {
         if (command.length < 4) {
             System.out.println("Not enough arguments for the send mail command.");
             return;
-        }          
-        if (command.length > 4)
-        {
-            System.out.println("Too many arguments for the send mail command.");
-            return;
         }
-
-        System.out.println(distantServerStub.sendMail(command[1], command[2], command[3]));
+        String content = command[3];
+        for (int i = 4; i < command.length; i++) {
+            content += " " + command[i];
+        }          
+        System.out.println(distantServerStub.sendMail(command[1], command[2], content));
     }
 
     private void list() throws RemoteException, ServerNotActiveException {
@@ -250,6 +263,61 @@ public class Client {
                 System.out.println(mail.asList());
             }
         }
+    }
+
+    /*
+    Methodes qui ne font pas appel au serveur.
+    */
+    private void join() {
+        for (String group : groups.keySet()) {
+            System.out.println(group);
+        }
+    }
+
+    private void create() {
+        if (command.length < 2) {
+            System.out.println("You need more argument for the create group command.");
+            return;
+        }
+        groups.put(command[1], new ArrayList<String>());
+        for (int i = 2; i < command.length; i++) {
+            groups.get(command[1]).add(command[i]);
+        }
+        updateGroupsDB();
+    }
+
+    private void loadGroups() {
+        try {
+            BufferedReader groupDBreader = new BufferedReader(new FileReader(GROUPS_DB_FILE_LOCATION));
+            String groupInfo;
+            while ((groupInfo = groupDBreader.readLine()) != null) {
+                String[] parsedInfo = groupInfo.split(" ");
+                groups.put(parsedInfo[0], new ArrayList<String>());
+                for (int i = 1; i < parsedInfo.length; i++) {
+                    groups.get(parsedInfo[0]).add(parsedInfo[i]);
+                }
+            }
+            groupDBreader.close();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateGroupsDB() {
+        try {
+            PrintWriter pw = new PrintWriter(GROUPS_DB_FILE_LOCATION);
+            for (String group : groups.keySet()) {
+                pw.write(group + " ");
+                for (String user : groups.get(group)) {
+                    pw.write(user + " ");
+                }
+                pw.write("\n");
+            }
+            pw.close();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+        
     }
 
 }
