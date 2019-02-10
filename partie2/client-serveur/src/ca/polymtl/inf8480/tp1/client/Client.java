@@ -12,6 +12,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.io.*;
 import java.util.Objects;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.nio.file.Paths;
 
 import ca.polymtl.inf8480.tp1.shared.ServerInterface;
 import ca.polymtl.inf8480.tp1.shared.Mail;
@@ -20,6 +23,7 @@ import ca.polymtl.inf8480.tp1.shared.Mail;
 public class Client {
     //info app client
     private final static String GROUPS_DB_FILE_LOCATION = "./groupsClientDB.txt";
+    private final static String USER_DB_FILE_LOCATION = "./userClientDB.txt";
     private final static String DISTANT_SERVER = "132.207.89.143";
     private final static String LOCAL_SERVER = "127.0.0.1";
     private final static boolean ONLY_UNREAD_MAIL = false;
@@ -139,7 +143,7 @@ public class Client {
     
 
     /*
-    Methodes qui font un appel au serveur par RMI
+    Server call methods using RMI
     */
     private void login() throws RemoteException, ServerNotActiveException {
         if (command.length < 3) {
@@ -168,17 +172,27 @@ public class Client {
 
     private void getGroupList()  throws RemoteException, ServerNotActiveException {
         Map<String,ArrayList<String>> tempGroups = new HashMap();
-        tempGroups = distantServerStub.getGroupList(groups.hashCode());
+        int checksum = getMD5checksum();
+        if (checksum == -1) {
+            System.out.println("There was an error calculating checksum");
+            return;
+        }
+        tempGroups = distantServerStub.getGroupList(checksum);
         if (tempGroups != null) {
             this.groups = tempGroups;
             updateGroupsDB();
         }
                  
-        System.out.println("Groups are :\n");    
+        System.out.println("Groups are :\n");
+        String printString = "";    
         for (String group : this.groups.keySet()) {
-            System.out.println(group);
+            printString += group + " {";
+            for (String user : this.groups.get(group)) {
+                printString += " " + user;
+            }
+            printString += " }\n";
         }
-        System.out.println("\n"); 
+        System.out.println(printString); 
     }
 
     private void publish() throws RemoteException, ServerNotActiveException {
@@ -223,12 +237,17 @@ public class Client {
             System.out.println("Too many arguments for the read mail command.");
             return;
         }
-        Mail requestedMail = distantServerStub.readMail(command[1]);
+        ArrayList<Mail> requestedMail = distantServerStub.readMail(command[1]);
         if (requestedMail == null) {
+            System.out.println("You are not logged in.");
+        } else if (requestedMail.isEmpty()) {
             System.out.println("Could not find mail.");
-            return;
+        } else {
+            for (Mail mail : requestedMail) {
+                System.out.println(mail.toString());
+            }
         }
-        System.out.println(requestedMail.toString());
+        
     }
 
     private void delete() throws RemoteException, ServerNotActiveException {
@@ -266,11 +285,33 @@ public class Client {
     }
 
     /*
-    Methodes qui ne font pas appel au serveur.
+    client only methods
     */
     private void join() {
-        for (String group : groups.keySet()) {
-            System.out.println(group);
+        if (command.length < 2) {
+            System.out.println("You need more argument for the join group command.");
+            return;
+        }
+        if (!groups.containsKey(command[1])) {
+            System.out.println("This group does not exist.");
+            return;
+        }
+        
+        try {
+            BufferedReader userDBreader = new BufferedReader(new FileReader(USER_DB_FILE_LOCATION));
+            String userName;
+            if ((userName = userDBreader.readLine()) != null) {
+                if (groups.get(command[1]).contains(userName)) {
+                    System.out.println("You are already in this group.");
+                } else {
+                    groups.get(command[1]).add(userName);
+                    updateGroupsDB();
+                    System.out.println("You have joined group " + command[1]);
+                }
+            }
+            userDBreader.close();
+        } catch(IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -279,11 +320,17 @@ public class Client {
             System.out.println("You need more argument for the create group command.");
             return;
         }
+        if (groups.containsKey(command[1])) {
+            System.out.println("There is already a group with that name.");
+            return;
+        }
+
         groups.put(command[1], new ArrayList<String>());
         for (int i = 2; i < command.length; i++) {
             groups.get(command[1]).add(command[i]);
         }
         updateGroupsDB();
+        System.out.println("Group created!");
     }
 
     private void loadGroups() {
@@ -318,6 +365,23 @@ public class Client {
             e.printStackTrace();
         }
         
+    }
+
+    private int getMD5checksum() {
+        int checksum = -1;
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            InputStream is = new FileInputStream(GROUPS_DB_FILE_LOCATION);
+            DigestInputStream dis = new DigestInputStream(is, md);
+            while (dis.read() != -1);
+            checksum = md.hashCode();
+            is.close();
+            dis.close();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        System.out.println(checksum);
+        return checksum;
     }
 
 }

@@ -15,6 +15,9 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Objects;
 import java.io.*;
+import java.security.MessageDigest;
+import java.security.DigestInputStream;
+import java.nio.file.Paths;
 
 import ca.polymtl.inf8480.tp1.shared.ServerInterface;
 import ca.polymtl.inf8480.tp1.shared.Mail;
@@ -28,7 +31,13 @@ class LogInfo {
         this.password = password;
         this.emails = new ArrayList<Mail>();
     } 
-} 
+}
+
+class ListLock {
+    public boolean groupListLocked = false;
+    public String lockedBy = ""; 
+    ListLock() {}
+}
 
 public class Server implements ServerInterface {
     private final static String GROUPS_DB_FILE_LOCATION = "./groupsServerDB.txt";
@@ -37,7 +46,7 @@ public class Server implements ServerInterface {
     private Map<String,LogInfo> users;
     private Map<String,ArrayList<String>> groups;
     private Map<String,String> loggedInUsers;
-    private boolean groupListLocked = false;
+    private ListLock listLockInfo;
 
 	public static void main(String[] args) {
 		Server server = new Server();
@@ -49,6 +58,7 @@ public class Server implements ServerInterface {
         users = new HashMap();
         groups = new HashMap();
         loggedInUsers = new HashMap();
+        listLockInfo = new ListLock();
 	}
 
 	private void run() {
@@ -125,6 +135,23 @@ public class Server implements ServerInterface {
         
     }
 
+    private int getMD5checksum() {
+        int checksum = -1;
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            InputStream is = new FileInputStream(GROUPS_DB_FILE_LOCATION);
+            DigestInputStream dis = new DigestInputStream(is, md);
+            while (dis.read() != -1);
+            checksum = md.hashCode();
+            is.close();
+            dis.close();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        System.out.println(checksum);
+        return checksum;
+    }
+
 	/*
 	 * Méthodes accessible par RMI.
 	 */
@@ -153,7 +180,7 @@ public class Server implements ServerInterface {
         if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return null;
 
-        if (groups.hashCode() != checksum)
+        if (getMD5checksum() != checksum)
             return groups;
             
         return null;
@@ -164,14 +191,17 @@ public class Server implements ServerInterface {
         if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return "You are not logged in.";
 
-        if (groupListLocked) {
+        if (listLockInfo.groupListLocked && listLockInfo.lockedBy.equals(RemoteServer.getClientHost())) {
             groups = new HashMap();
             for (String group : groupsDef.keySet()) {
                 groups.put(group,groupsDef.get(group));
             }
             updateGroupsDB();
-            groupListLocked = false;
+            listLockInfo.groupListLocked = false;
+            listLockInfo.lockedBy = "";
             return "Distant group list successfully updated.";
+        } else if (listLockInfo.groupListLocked) {
+            return "Group list is already locked by another user.";
         } else {
             return "Group list needs to be locked for this.";
         }
@@ -182,8 +212,9 @@ public class Server implements ServerInterface {
         if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return "You are not logged in.";
 
-        if (!groupListLocked) {
-            groupListLocked = true;
+        if (!listLockInfo.groupListLocked) {
+            listLockInfo.groupListLocked = true;
+            listLockInfo.lockedBy = RemoteServer.getClientHost();
             return "Group list is now locked.";
         } else {
             return "Group list already locked by another user.";
@@ -247,16 +278,16 @@ public class Server implements ServerInterface {
 	}
 
     @Override
-	public Mail readMail(String id) throws RemoteException, ServerNotActiveException {
+	public ArrayList<Mail> readMail(String id) throws RemoteException, ServerNotActiveException {
         if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return null;
 
         ArrayList<Mail> userMails = users.get(loggedInUsers.get(RemoteServer.getClientHost())).emails;
-        Mail requestedMail = null;
+        ArrayList<Mail> requestedMail = new ArrayList<Mail>();
         for (Mail mail : userMails) {
             if (mail.subject.equals(id)) {
                 mail.hasBeenRead = true;
-                requestedMail = mail;
+                requestedMail.add(mail);
             }
         }
 
@@ -276,6 +307,7 @@ public class Server implements ServerInterface {
             if (mail.subject.equals(id)) {
                 userMails.remove(mail);
                 returnMessage = "Mail successfully deleted";
+                break;
             }
         }
 

@@ -20,7 +20,7 @@ public interface ServerInterface extends Remote {
 
     ArrayList<Mail> listMails(boolean justUnread) throws RemoteException, ServerNotActiveException;
 
-    Mail readMail(String id) throws RemoteException, ServerNotActiveException;
+    ArrayList<Mail> readMail(String id) throws RemoteException, ServerNotActiveException;
 
     String deleteMail(String id) throws RemoteException, ServerNotActiveException;
 

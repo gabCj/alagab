@@ -20,7 +20,7 @@ public class Mail implements java.io.Serializable
     }
 
     public String toString() {
-        String returnString = subject + "\n" + dateReceived + "\n" + sentBy + "\n\n" + content + "\n";
+        String returnString = subject + "\n" + dateReceived + "\n" + sentBy + "\n\n" + content + "\n\n";
         return returnString;
     }
 
