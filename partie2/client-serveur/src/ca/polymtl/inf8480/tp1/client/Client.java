@@ -18,7 +18,9 @@ import ca.polymtl.inf8480.tp1.shared.Mail;
 
 
 public class Client {
-private final static boolean ONLY_UNREAD_MAIL = false;
+    private final static String DISTANT_SERVER = "132.207.89.143";
+    private final static String LOCAL_SERVER = "127.0.0.1";
+    private final static boolean ONLY_UNREAD_MAIL = false;
 
     private final static String LOGIN = "login";
     private final static String GROUP_LIST = "get-group-list";
@@ -55,7 +57,7 @@ private final static boolean ONLY_UNREAD_MAIL = false;
 			System.setSecurityManager(new SecurityManager());
 		}
 
-		distantServerStub = loadServerStub("127.0.0.1");	
+		distantServerStub = loadServerStub(LOCAL_SERVER);	
 	}
 
 	private void run() {
@@ -157,6 +159,11 @@ private final static boolean ONLY_UNREAD_MAIL = false;
         tempGroups = distantServerStub.getGroupList(groups.hashCode());
         if (tempGroups != null)
             this.groups = tempGroups;
+       
+        for (String group : this.groups.keySet()) {
+            System.out.println(group);
+        }
+        
     }
 
     private void publish() throws RemoteException, ServerNotActiveException {

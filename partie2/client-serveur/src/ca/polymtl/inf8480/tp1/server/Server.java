@@ -137,8 +137,17 @@ public class Server implements ServerInterface {
         if (!loggedInUsers.contains(RemoteServer.getClientHost()))
             return null;
 
-        if (groups.hashCode() != checksum)
+        System.out.println("checksum = " + checksum);
+        System.out.println("group hashcode = " + groups.hashCode());
+        if (groups.hashCode() != checksum) {
+           /* Map<String,ArrayList<String>> returnGroup = new HashMap();
+            for (String group : groups.keySet()) {
+                returnGroup.put(group,groups.get(group));
+            }
+            return returnGroup;*/
             return groups;
+        }
+            
         return null;
 	}
 
@@ -148,7 +157,11 @@ public class Server implements ServerInterface {
             return "You are not logged in.";
 
         if (groupListLocked) {
-            groups = groupsDef;
+            groups = new HashMap();
+            for (String group : groupsDef.keySet()) {
+                groups.put(group,groupsDef.get(group));
+                System.out.println(group);
+            }
             groupListLocked = false;
             return "Distant group list successfully updated.";
         } else {
