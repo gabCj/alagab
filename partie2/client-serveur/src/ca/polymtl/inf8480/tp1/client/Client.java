@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.nio.file.Paths;
+import java.util.Arrays;
 
 import ca.polymtl.inf8480.tp1.shared.ServerInterface;
 import ca.polymtl.inf8480.tp1.shared.Mail;
@@ -22,8 +23,8 @@ import ca.polymtl.inf8480.tp1.shared.Mail;
 
 public class Client {
     //info app client
-    private final static String GROUPS_DB_FILE_LOCATION = "./groupsClientDB.txt";
-    private final static String USER_DB_FILE_LOCATION = "./userClientDB.txt";
+    private final static String GROUPS_DB_FILE_LOCATION = "./clientDB/groups.txt";
+    private final static String USER_DB_FILE_LOCATION = "./clientDB/user.txt";
     private final static String DISTANT_SERVER = "132.207.89.143";
     private final static String LOCAL_SERVER = "127.0.0.1";
     private final static boolean ONLY_UNREAD_MAIL = false;
@@ -172,8 +173,8 @@ public class Client {
 
     private void getGroupList()  throws RemoteException, ServerNotActiveException {
         Map<String,ArrayList<String>> tempGroups = new HashMap();
-        int checksum = getMD5checksum();
-        if (checksum == -1) {
+        String checksum = getMD5checksum();
+        if (checksum == null) {
             System.out.println("There was an error calculating checksum");
             return;
         }
@@ -367,21 +368,20 @@ public class Client {
         
     }
 
-    private int getMD5checksum() {
-        int checksum = -1;
+    private String getMD5checksum() {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
             InputStream is = new FileInputStream(GROUPS_DB_FILE_LOCATION);
             DigestInputStream dis = new DigestInputStream(is, md);
-            while (dis.read() != -1);
-            checksum = md.hashCode();
+            while (dis.read() > 0);
+            byte[] checksum = md.digest();
             is.close();
             dis.close();
+            return Arrays.toString(checksum);
         } catch(Exception e) {
             e.printStackTrace();
         }
-        System.out.println(checksum);
-        return checksum;
+        return null;
     }
 
 }

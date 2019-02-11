@@ -10,7 +10,7 @@ public interface ServerInterface extends Remote {
 
 	String openSession(String login, String password) throws RemoteException, ServerNotActiveException;
 
-    Map<String,ArrayList<String>> getGroupList(int checksum) throws RemoteException, ServerNotActiveException;
+    Map<String,ArrayList<String>> getGroupList(String checksum) throws RemoteException, ServerNotActiveException;
 
     String pushGroupList(Map<String,ArrayList<String>> groupsDef) throws RemoteException, ServerNotActiveException;
 

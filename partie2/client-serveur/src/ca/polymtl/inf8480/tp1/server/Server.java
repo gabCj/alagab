@@ -40,13 +40,15 @@ class ListLock {
 }
 
 public class Server implements ServerInterface {
-    private final static String GROUPS_DB_FILE_LOCATION = "./groupsServerDB.txt";
-    private final static String USERS_DB_FILE_LOCATION = "./usersServerDB.txt";
+    private final static String GROUPS_DB_FILE_LOCATION = "./serverDB/groups.txt";
+    private final static String USERS_DB_FILE_LOCATION = "./serverDB/users.txt";
+    private final static String MAIL_DB_FILE_LOCATION = "./serverDB/mails.txt";
 
     private Map<String,LogInfo> users;
     private Map<String,ArrayList<String>> groups;
     private Map<String,String> loggedInUsers;
     private ListLock listLockInfo;
+    private boolean mailDBlocked = false;
 
 	public static void main(String[] args) {
 		Server server = new Server();
@@ -64,6 +66,7 @@ public class Server implements ServerInterface {
 	private void run() {
         loadUsers();
         loadGroups();
+        loadMails();
 
 		if (System.getSecurityManager() == null) {
 			System.setSecurityManager(new SecurityManager());
@@ -118,6 +121,33 @@ public class Server implements ServerInterface {
         }
     }
 
+    private void loadMails() {
+        try {
+            BufferedReader mailDBreader = new BufferedReader(new FileReader(MAIL_DB_FILE_LOCATION));
+            String mailInfo;
+            while ((mailInfo = mailDBreader.readLine()) != null) {
+                String[] parsedInfo = mailInfo.split(" ");
+                if (parsedInfo.length >= 11 && users.containsKey(parsedInfo[0])) {
+                    String content = parsedInfo[10];
+                    String date = parsedInfo[2];
+                    for (int i = 3; i <= 7; i++) {
+                        date += " " + parsedInfo[i];
+                    }
+                    for (int i = 11; i < parsedInfo.length; i++) {
+                        content += " " + parsedInfo[i];
+                    }
+                    Mail newMail = new Mail(parsedInfo[1],content,date,parsedInfo[8]);
+                    if (parsedInfo[9].equals("true"))
+                        newMail.hasBeenRead = true;
+                    users.get(parsedInfo[0]).emails.add(newMail);
+                }
+            }
+            mailDBreader.close();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void updateGroupsDB() {
         try {
             PrintWriter pw = new PrintWriter(GROUPS_DB_FILE_LOCATION);
@@ -135,21 +165,43 @@ public class Server implements ServerInterface {
         
     }
 
-    private int getMD5checksum() {
-        int checksum = -1;
-        try {
+    private void updateMailDB() {
+        if (!mailDBlocked) {
+            mailDBlocked = true;
+            try {
+                PrintWriter pw = new PrintWriter(MAIL_DB_FILE_LOCATION);
+                for (String user : users.keySet()) {
+                    for (Mail mail : users.get(user).emails) {
+                        pw.write(user + " " + mail.subject + " " + mail.dateReceived + " " + mail.sentBy + " ");
+                        if (mail.hasBeenRead)
+                            pw.write("true ");
+                        else
+                            pw.write("false ");
+                        pw.write(mail.content + "\n");
+                    }
+                }
+                pw.close();
+            } catch(IOException e) {
+                e.printStackTrace();
+            }
+            mailDBlocked = false;
+        }   
+    }
+
+    private String getMD5checksum() {
+        try {        
             MessageDigest md = MessageDigest.getInstance("MD5");
             InputStream is = new FileInputStream(GROUPS_DB_FILE_LOCATION);
             DigestInputStream dis = new DigestInputStream(is, md);
-            while (dis.read() != -1);
-            checksum = md.hashCode();
+            while (dis.read() > 0);
+            byte[] checksum = md.digest();
             is.close();
             dis.close();
+            return Arrays.toString(checksum);
         } catch(Exception e) {
             e.printStackTrace();
         }
-        System.out.println(checksum);
-        return checksum;
+        return null;
     }
 
 	/*
@@ -176,13 +228,13 @@ public class Server implements ServerInterface {
 	}
 
     @Override
-	public Map<String,ArrayList<String>> getGroupList(int checksum) throws RemoteException, ServerNotActiveException {
+	public Map<String,ArrayList<String>> getGroupList(String checksum) throws RemoteException, ServerNotActiveException {
         if (!loggedInUsers.containsKey(RemoteServer.getClientHost()))
             return null;
-
-        if (getMD5checksum() != checksum)
+   
+        if (!getMD5checksum().equals(checksum))
             return groups;
-            
+               
         return null;
 	}
 
@@ -234,6 +286,8 @@ public class Server implements ServerInterface {
 
         ArrayList<String> group = groups.get(addrDest);
         LogInfo userInfo;
+        boolean changeInMails = false;
+
         if (group != null) {
             status = "Sent mail to group.";
             for (String user : group) {
@@ -241,6 +295,7 @@ public class Server implements ServerInterface {
                 if (userInfo != null) {
                     userInfo.emails.add(
                         new Mail(subjet, content, Calendar.getInstance().getTime().toString(), userAddr));
+                    changeInMails = true;
                 }
             }
         }
@@ -250,9 +305,12 @@ public class Server implements ServerInterface {
                 status = "Sent mail to user.";
                 userInfo.emails.add(
                     new Mail(subjet, content, Calendar.getInstance().getTime().toString(), userAddr));
+                changeInMails = true;
             }
         }
 
+        if (changeInMails)
+            updateMailDB();
         return status;
 	}
 
@@ -284,13 +342,18 @@ public class Server implements ServerInterface {
 
         ArrayList<Mail> userMails = users.get(loggedInUsers.get(RemoteServer.getClientHost())).emails;
         ArrayList<Mail> requestedMail = new ArrayList<Mail>();
+        boolean changeInMails = false;
+
         for (Mail mail : userMails) {
             if (mail.subject.equals(id)) {
                 mail.hasBeenRead = true;
+                changeInMails = true;
                 requestedMail.add(mail);
             }
         }
 
+        if (changeInMails)
+            updateMailDB();
         return requestedMail;
 	}
 
@@ -306,6 +369,7 @@ public class Server implements ServerInterface {
         for (Mail mail : userMails) {
             if (mail.subject.equals(id)) {
                 userMails.remove(mail);
+                updateMailDB();
                 returnMessage = "Mail successfully deleted";
                 break;
             }
