@@ -30,17 +30,17 @@ public class Client {
     private final static boolean ONLY_UNREAD_MAIL = false;
 
     //commandes client
-    private final static String LOGIN = "login";
-    private final static String GROUP_LIST = "get-group-list";
-    private final static String PUBLISH = "publish-group-list";
-    private final static String LOCK = "lock-group-list";
-    private final static String SEND = "send";
-    private final static String READ = "read";
-    private final static String LIST = "list";
-    private final static String DELETE = "delete";
-    private final static String SEARCH = "search";
-    private final static String JOIN = "join-group";
-    private final static String CREATE = "create-group";
+    private final static String LOGIN = "login"; //Ex : ./client.sh login Daniel 123
+    private final static String GROUP_LIST = "get-group-list"; //Ex : ./client.sh get-group-list
+    private final static String PUBLISH = "publish-group-list"; //Ex : ./client.sh publish-group-list
+    private final static String LOCK = "lock-group-list"; //Ex : ./client.sh lock-group-list
+    private final static String SEND = "send"; //Ex : ./client.sh send subject addrDest this is the content
+    private final static String READ = "read"; //Ex : ./client.sh read subject
+    private final static String LIST = "list"; //Ex : ./client.sh list
+    private final static String DELETE = "delete"; //Ex : ./client.sh delete subject
+    private final static String SEARCH = "search"; //Ex : ./client.sh search these are my keywords
+    private final static String JOIN = "join-group"; //Ex : ./client.sh join-group groupName
+    private final static String CREATE = "create-group"; //Ex : ./client.sh create-group groupName
 
     private ServerInterface distantServerStub = null;
 	private String[] command;
@@ -67,7 +67,7 @@ public class Client {
 			System.setSecurityManager(new SecurityManager());
 		}
 
-		distantServerStub = loadServerStub(LOCAL_SERVER);	
+		distantServerStub = loadServerStub(DISTANT_SERVER);	
 	}
 
 	private void run() {
