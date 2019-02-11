@@ -24,7 +24,7 @@ import ca.polymtl.inf8480.tp1.shared.Mail;
 public class Client {
     //info app client
     private final static String GROUPS_DB_FILE_LOCATION = "./clientDB/groups.txt";
-    private final static String USER_DB_FILE_LOCATION = "./clientDB/user.txt";
+    private final static String USER_DB_FILE_LOCATION = "./clientDB/currentUser.txt";
     private final static String DISTANT_SERVER = "132.207.89.143";
     private final static String LOCAL_SERVER = "127.0.0.1";
     private final static boolean ONLY_UNREAD_MAIL = false;
@@ -160,9 +160,9 @@ public class Client {
         System.out.println(loginState); 
         if (loginState.equals("Successful login!")) {
             try {
-                File file = new File("./loginToken.txt");
+                File file = new File(USER_DB_FILE_LOCATION);
                 BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-                writer.write("Successful login!");
+                writer.write(command[1]);
                 writer.close();
             } catch (IOException e) {
                 e.printStackTrace();
