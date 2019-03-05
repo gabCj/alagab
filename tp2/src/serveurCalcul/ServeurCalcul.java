@@ -32,7 +32,7 @@ public class ServeurCalcul implements ServeurCalculInterface {
 
 			Registry registry = LocateRegistry.getRegistry();
 			registry.rebind("serveurCalcul", stub);
-			System.out.println("ServerCalcul ready.");
+			System.out.println("ServeurCalcul ready.");
 		} catch (ConnectException e) {
 			System.err
 					.println("Impossible de se connecter au registre RMI. Est-ce que rmiregistry est lancé ?");
@@ -47,8 +47,12 @@ public class ServeurCalcul implements ServeurCalculInterface {
     Methodes accessible par RMI
     */
     @Override
-    public String sayHi(String message) throws RemoteException {
-        String returnMessage = "Serveur calcul retourne : " + message;
-        return returnMessage;
+    public int pell(int x) throws RemoteException {
+        return Operations.pell(x);
+    }
+
+    @Override
+    public int prime(int x) throws RemoteException {
+        return Operations.prime(x);
     }
 }

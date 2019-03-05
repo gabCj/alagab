@@ -6,6 +6,7 @@ import java.rmi.server.ServerNotActiveException;
 
 public interface ServeurCalculInterface extends Remote {
 
-	String sayHi(String message) throws RemoteException;
+    int pell(int x) throws RemoteException;
 
+    int prime(int x) throws RemoteException;
 }

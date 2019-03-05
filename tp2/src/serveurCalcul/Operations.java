@@ -6,6 +6,8 @@
  * @author Simon Delisle et Francois Doray
  *
  */
+package serveurCalcul;
+
 public class Operations {
 
 	public static int pell(int x) {
