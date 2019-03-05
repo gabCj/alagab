@@ -6,7 +6,7 @@ popd > /dev/null
 
 cat << EndOfMessage
 HELP: 
-./server.sh ip_address
+./serverCalcul.sh ip_address
 	- ip_address: (OPTIONAL) L'addresse ip du serveur.
 	  Si l'arguement est non fourni, on conisdère que le serveur est local (ip_address = 127.0.0.1)
 
@@ -18,8 +18,8 @@ if [ -z "$1" ]
     IPADDR="127.0.0.1"
 fi
 
-java -cp "$basepath"/server.jar:"$basepath"/shared.jar \
-  -Djava.rmi.server.codebase=file:"$basepath"/shared.jar \
+java -cp "$basepath"/serveurCalcul.jar:"$basepath"/operations.jar \
+  -Djava.rmi.server.codebase=file:"$basepath"/operations.jar \
   -Djava.security.policy="$basepath"/policy \
   -Djava.rmi.server.hostname="$IPADDR" \
-  ca.polymtl.inf8480.tp1.server.Server
+  serveurCalcul.ServeurCalcul
