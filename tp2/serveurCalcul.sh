@@ -18,8 +18,8 @@ if [ -z "$1" ]
     IPADDR="127.0.0.1"
 fi
 
-java -cp "$basepath"/serveurCalcul.jar:"$basepath"/operations.jar \
-  -Djava.rmi.server.codebase=file:"$basepath"/operations.jar \
+java -cp "$basepath"/serveurCalcul.jar:"$basepath"/shared.jar \
+  -Djava.rmi.server.codebase=file:"$basepath"/shared.jar \
   -Djava.security.policy="$basepath"/policy \
   -Djava.rmi.server.hostname="$IPADDR" \
   serveurCalcul.ServeurCalcul

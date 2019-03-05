@@ -12,13 +12,4 @@ HELP:
 
 EndOfMessage
 
-IPADDR=$1
-if [ -z "$1" ]
-  then
-    IPADDR="127.0.0.1"
-fi
-
-java -cp "$basepath"/repartiteur.jar \
-  -Djava.security.policy="$basepath"/policy \
-  -Djava.rmi.server.hostname="$IPADDR" \
-  repartiteur.Repartiteur
+java -cp "$basepath"/repartiteur.jar:"$basepath"/shared.jar -Djava.security.policy="$basepath"/policy repartiteur.Repartiteur $*

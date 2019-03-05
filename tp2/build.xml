@@ -15,6 +15,7 @@
 	<target name="clean">
 		<delete dir="bin" />
 		<delete file="serveurCalcul.jar" />
+        <delete file="shared.jar" />
 		<delete file="repartiteur.jar" />
 		<delete file="repertoireNoms.jar" />
 	</target>
@@ -26,7 +27,7 @@
 	</target>
 	<target depends="build-class" name="build-jar">
 		<jar destfile="serveurCalcul.jar" basedir="bin" includes="serveurCalcul/**" update="false" />
-        <jar destfile="operations.jar" basedir="bin" includes="serveurCalcul/**" update="false" />
+        <jar destfile="shared.jar" basedir="bin" includes="shared/**" update="false" />
 		<jar destfile="repartiteur.jar" basedir="bin" includes="repartiteur/**" update="false" />
 		<jar destfile="repertoireNoms.jar" basedir="bin" includes="repertoireNoms/**" update="false" />
 	</target>
