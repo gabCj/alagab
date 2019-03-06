@@ -13,8 +13,20 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import shared.ServeurCalculInterface;
+import shared.Operation;
+
+class Server {
+    Server(ServeurCalculInterface stub) {
+        this.stub = stub;
+        this.currentOps = 0;
+    }
+    public ServeurCalculInterface stub;
+    public int maxOps;
+    public int currentOps;
+}
 
 public class Repartiteur {
     private final String FILE_PATH = "./operations/";
@@ -23,14 +35,15 @@ public class Repartiteur {
     private final String PRIME = "prime";
     private final String PELL = "pell";
 
-    String fileName;
-    ServeurCalculInterface distantServerStub;
+    private ArrayList<Server> servers;
+    private ArrayList<Operation> operations;
+    private String OperationsFileName;
 
     public static void main(String[] args) {
 
-		if (args.length == 1) {
+		if (args.length >= 1) {
 			Repartiteur repartiteur = new Repartiteur(args[0]);
-		    repartiteur.run();
+		    repartiteur.run(args);
 		} else {
             System.out.println("Enter a file name for repartiteur.");
         }
@@ -39,16 +52,17 @@ public class Repartiteur {
 
 	public Repartiteur(String fileName) {
 		super();
-        this.fileName = fileName;
-
+        this.OperationsFileName = fileName;
+        servers = new ArrayList<Server>();
+        operations = new ArrayList<Operation>();
 		/*if (System.getSecurityManager() == null) {
 			System.setSecurityManager(new SecurityManager());
 		}*/
-
-		distantServerStub = loadServerStub(LOCAL_SERVER);	
 	}
 
-	private void run() {
+	private void run(String[] serverIds) {
+        loadServerStubs(serverIds);
+        obtainServersLimit();
         try {
             appelRMIDistant();
         } catch (ServerNotActiveException e) {
@@ -56,12 +70,12 @@ public class Repartiteur {
         }        
 	}
 
-	private ServeurCalculInterface loadServerStub(String hostname) {
-		ServeurCalculInterface stub = null;
-
+	private void loadServerStubs(String[] serverIds) {
 		try {
-			Registry registry = LocateRegistry.getRegistry(hostname);
-			stub = (ServeurCalculInterface) registry.lookup("serveurCalcul");
+            Registry registry = LocateRegistry.getRegistry(LOCAL_SERVER);
+            for (int i = 1; i < serverIds.length; i++) {
+                servers.add(new Server((ServeurCalculInterface) registry.lookup(serverIds[i])));
+            }
 		} catch (NotBoundException e) {
 			System.out.println("Erreur: Le nom '" + e.getMessage()
 					+ "' n'est pas défini dans le registre.");
@@ -70,15 +84,29 @@ public class Repartiteur {
 		} catch (RemoteException e) {
 			System.out.println("Erreur: " + e.getMessage());
 		}
+    }
+    
+    /*
+    This method is used Repartiteur start with the ids given to obtain each of those server's max ops limit.
+    */
+    private void obtainServersLimit() {
+        try {
+            for (Server server : servers) {
+                server.maxOps = server.stub.obtainServerMaxOps();
+            }
+        } catch(RemoteException e) {
+            System.out.println("Erreur: " + e.getMessage());
+        }    
+    }
 
-		return stub;
-	}
-
-
+    /*
+    This is the main method that uses stub and distributes operations to servers
+    */
 	private void appelRMIDistant() throws ServerNotActiveException {
-        String filePath = FILE_PATH + fileName;
+        
+        String filePath = FILE_PATH + OperationsFileName;
         File operationsFile = new File(filePath);
-
+        int sum = 0;
         try {
             BufferedReader br = new BufferedReader(new FileReader(operationsFile));
             String line;
@@ -93,12 +121,9 @@ public class Repartiteur {
                 }
                 int x = Integer.parseInt(parsedOperation[1]);
                 
-                //send ServeurCalcul the operation
-                if (parsedOperation[0].equals(PRIME))
-                    System.out.println(distantServerStub.prime(x));
-                else if (parsedOperation[0].equals(PELL))
-                    System.out.println(distantServerStub.pell(x));
+                operations.add(new Operation(parsedOperation[0], x));
             }  
+            sendOpsToServers();
 		} catch (RemoteException e) {
 			System.out.println("Erreur: " + e.getMessage());
 		} catch (NumberFormatException e) {
@@ -110,6 +135,9 @@ public class Repartiteur {
         }
     }
 
+    /*
+    This method is used with each operation in file to check its validity
+    */
     private boolean checkOperationvalidity(String[] parsedOperation) {
         if (parsedOperation.length != 2)
             return false;
@@ -117,4 +145,14 @@ public class Repartiteur {
             return false;
         return true;
     }
+
+    /*
+    This method send all operations to all servers
+    */
+    private void sendOpsToServers() throws RemoteException {
+        for (Server server : servers) {
+            System.out.println(server.stub.calculate(operations));
+        }
+    }
+
 }
