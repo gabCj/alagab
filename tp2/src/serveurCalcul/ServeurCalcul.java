@@ -8,6 +8,7 @@ import java.rmi.server.RemoteServer;
 import java.rmi.server.ServerNotActiveException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.Random;
 
 import shared.ServeurCalculInterface;
 import shared.Operation;
@@ -16,15 +17,19 @@ public class ServeurCalcul implements ServeurCalculInterface {
     private final String PRIME = "prime";
     private final String PELL = "pell";
     
-    private String id;
     private int maxOps;
-    private int currentOps;
+    private int m;
 
     public static void main(String[] args) {
-        if (args.length >= 2) {
+        if (args.length >= 3) {
             try {
                 int max = Integer.parseInt(args[1]);
-                ServeurCalcul server = new ServeurCalcul(max);
+                int m = Integer.parseInt(args[2]);
+                if (m < 0 || m > 100) {
+                    System.out.println("Third server argument must be between 0 and 100.");
+                    return;
+                }
+                ServeurCalcul server = new ServeurCalcul(max, m);
 		        server.run(args[0]);
             } catch (NumberFormatException e) {
                 System.out.println("Second server argument must be a number.");
@@ -32,14 +37,15 @@ public class ServeurCalcul implements ServeurCalculInterface {
         } else {
             System.out.println("First server argument for server Id.");
             System.out.println("Second server argument for max number of operations.");
-            System.out.println("Third server argument for distant IP addr (optional).");
+            System.out.println("Third server argument for m (0% to 100%).");
+            System.out.println("Fourth server argument for distant IP addr (optional).");
         }
 	}
 
-	public ServeurCalcul(int maxOps) {
+	public ServeurCalcul(int maxOps, int m) {
         super();
         this.maxOps = maxOps;
-        this.currentOps = 0;
+        this.m = m;
 	}
 
 	private void run(String id) {
@@ -85,6 +91,7 @@ public class ServeurCalcul implements ServeurCalculInterface {
 
     @Override
     public int calculate(ArrayList<Operation> operations) throws RemoteException {
+        System.out.println("task received. Task size = " + operations.size());
         int sum = 0;
 
         for (Operation operation : operations) {
@@ -94,6 +101,11 @@ public class ServeurCalcul implements ServeurCalculInterface {
                 sum += Operations.pell(operation.x);
             sum = sum % 5000;
         }
+
+        Random rand = new Random();
+        int random = rand.nextInt(100) + 1;
+        if (random <= m) //Falsify result
+            sum++;
 
         return sum;
     }

@@ -21,11 +21,9 @@ import shared.Operation;
 class Server {
     Server(ServeurCalculInterface stub) {
         this.stub = stub;
-        this.currentOps = 0;
     }
     public ServeurCalculInterface stub;
     public int maxOps;
-    public int currentOps;
 }
 
 public class Repartiteur {
@@ -34,6 +32,8 @@ public class Repartiteur {
     private final String DISTANT_SERVER = "132.207.89.143";
     private final String PRIME = "prime";
     private final String PELL = "pell";
+    private final int THRESHOLD = 50;
+    private final boolean SECURE_MODE = true;
 
     private ArrayList<Server> servers;
     private ArrayList<Operation> operations;
@@ -106,7 +106,6 @@ public class Repartiteur {
         
         String filePath = FILE_PATH + OperationsFileName;
         File operationsFile = new File(filePath);
-        int sum = 0;
         try {
             BufferedReader br = new BufferedReader(new FileReader(operationsFile));
             String line;
@@ -122,10 +121,11 @@ public class Repartiteur {
                 int x = Integer.parseInt(parsedOperation[1]);
                 
                 operations.add(new Operation(parsedOperation[0], x));
-            }  
-            sendOpsToServers();
-		} catch (RemoteException e) {
-			System.out.println("Erreur: " + e.getMessage());
+            }
+            if (SECURE_MODE)  
+                sendOpsToServersSecured();
+            else
+                sendToServersNotSecured();
 		} catch (NumberFormatException e) {
             System.out.println("The file contains invalid operations and/or structure.");
         } catch (FileNotFoundException e) {
@@ -147,12 +147,56 @@ public class Repartiteur {
     }
 
     /*
-    This method send all operations to all servers
+    This method send distributes operations to servers for the secure mode
     */
-    private void sendOpsToServers() throws RemoteException {
-        for (Server server : servers) {
-            System.out.println(server.stub.calculate(operations));
+    private void sendOpsToServersSecured() {
+        int sum = 0;
+        int operationsSent = 0;
+        int nextServer = 0;
+        ArrayList<Operation> task;
+
+        while (operationsSent < operations.size() && servers.size() != 0) {
+            task = new ArrayList<Operation>();
+            int taskSize = calculateTaskSize(servers.get(nextServer).maxOps);
+
+            if (taskSize > (operations.size() - operationsSent)) {
+                taskSize = operations.size() - operationsSent;
+            }
+
+            for (int i = operationsSent; i < (operationsSent + taskSize); i++) {
+                task.add(operations.get(i));
+            }
+
+            try {
+                sum = (sum + servers.get(nextServer).stub.calculate(task)) % 5000;
+
+                operationsSent += taskSize;
+                nextServer = (nextServer + 1) % servers.size();
+            } catch(RemoteException e) {
+                System.out.println("Tried accessing a server that shut down. Redistributing.");
+                servers.remove(nextServer);
+                if (servers.size() == 0)
+                    System.out.println("There are no more active servers. Aborting.");
+                nextServer = nextServer % servers.size();
+            }
+            
         }
+
+        System.out.println(sum);
+    }
+
+    /*
+    This method send distributes operations to servers for the non secure mode
+    */
+    private void sendToServersNotSecured() {
+        // A faire
+    }
+
+    /*
+    This method calculates the size of the task to send to server based on threshold and qi
+    */
+    private int calculateTaskSize(int qi) {
+        return ((THRESHOLD / 100) * (5*qi)) + qi;
     }
 
 }

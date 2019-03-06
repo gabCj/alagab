@@ -3,10 +3,11 @@ Pour compiler le code : commande "ant" a partir du dossier "tp2"
 Pour executer : 
                 1. commande "rmiregistry &" a partir du dossier "bin"
                 
-                2. Serveur de Calcul : commande "./serveurCalcul.sh <arg1> <arg2> <arg3>" a partir du dossier "tp2"
+                2. Serveur de Calcul : commande "./serveurCalcul.sh <arg1> <arg2> <arg3> <arg4>" a partir du dossier "tp2"
                                         <arg1> = Le nom du serveur (obligatoire)
                                         <arg2> = Le nombre maximum d'operations que le repartiteur peut envoyer a ce serveur (obligatoire)
-                                        <arg3> = l'adresse IP du serveur (optionnel)
+                                        <arg3> = Le % m pour la fiabilite du serveur. Doit etre entre 0 et 100 (obligatoire)
+                                        <arg4> = l'adresse IP du serveur (optionnel)
                 
                 3. Repartiteur : commande "./repartiteur.sh <arg1> <arg2> <...> <argN>" a partir du dossier "tp2"
                                     <arg1> = Le fichier d'operations. Ils sont dans le repertoire "operations" (obligatoire)

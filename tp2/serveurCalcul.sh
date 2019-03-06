@@ -12,8 +12,8 @@ HELP:
 
 EndOfMessage
 
-IPADDR=$3
-if [ -z "$3" ]
+IPADDR=$4
+if [ -z "$4" ]
   then
     IPADDR="127.0.0.1"
 fi
@@ -22,4 +22,4 @@ java -cp "$basepath"/serveurCalcul.jar:"$basepath"/shared.jar \
   -Djava.rmi.server.codebase=file:"$basepath"/shared.jar \
   -Djava.security.policy="$basepath"/policy \
   -Djava.rmi.server.hostname="$IPADDR" \
-  serveurCalcul.ServeurCalcul $1 $2
+  serveurCalcul.ServeurCalcul $1 $2 $3
