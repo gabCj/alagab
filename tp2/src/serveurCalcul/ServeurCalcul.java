@@ -16,20 +16,21 @@ import shared.Operation;
 public class ServeurCalcul implements ServeurCalculInterface {
     private final String PRIME = "prime";
     private final String PELL = "pell";
+    private final int REFUSAL_CODE = -1;
     
     private int maxOps;
-    private int m;
+    private int reliability;
 
     public static void main(String[] args) {
         if (args.length >= 3) {
             try {
                 int max = Integer.parseInt(args[1]);
-                int m = Integer.parseInt(args[2]);
-                if (m < 0 || m > 100) {
+                int reliability = Integer.parseInt(args[2]);
+                if (reliability < 0 || reliability > 100) {
                     System.out.println("Third server argument must be between 0 and 100.");
                     return;
                 }
-                ServeurCalcul server = new ServeurCalcul(max, m);
+                ServeurCalcul server = new ServeurCalcul(max, reliability);
 		        server.run(args[0]);
             } catch (NumberFormatException e) {
                 System.out.println("Second server argument must be a number.");
@@ -37,15 +38,15 @@ public class ServeurCalcul implements ServeurCalculInterface {
         } else {
             System.out.println("First server argument for server Id.");
             System.out.println("Second server argument for max number of operations.");
-            System.out.println("Third server argument for m (0% to 100%).");
+            System.out.println("Third server argument for server reliability (0% to 100%).");
             System.out.println("Fourth server argument for distant IP addr (optional).");
         }
 	}
 
-	public ServeurCalcul(int maxOps, int m) {
+	public ServeurCalcul(int maxOps, int reliability) {
         super();
         this.maxOps = maxOps;
-        this.m = m;
+        this.reliability = reliability;
 	}
 
 	private void run(String id) {
@@ -90,11 +91,17 @@ public class ServeurCalcul implements ServeurCalculInterface {
     }
 
     @Override
-    public int calculate(ArrayList<Operation> operations) throws RemoteException {
-        System.out.println("task received. Task size = " + operations.size());
+    public int calculate(ArrayList<Operation> task) throws RemoteException {
+        System.out.println("task received. Task size = " + task.size());
+        Random rand = new Random();
+        if (task.size() > maxOps && rand.nextInt(100) + 1 <= calculateRefusalProbability(task.size())) {
+            System.out.println("task was refused.");
+            return REFUSAL_CODE;
+        }
+
         int sum = 0;
 
-        for (Operation operation : operations) {
+        for (Operation operation : task) {
             if (operation.op.equals(PRIME))
                 sum += Operations.prime(operation.x);
             if (operation.op.equals(PELL))
@@ -102,11 +109,22 @@ public class ServeurCalcul implements ServeurCalculInterface {
             sum = sum % 5000;
         }
 
-        Random rand = new Random();
+        
         int random = rand.nextInt(100) + 1;
-        if (random <= m) //Falsify result
-            sum++;
+        if (random <= reliability) { //falsify result
+            sum += rand.nextInt(100);
+            System.out.println("Oups! False result returned.");
+        }
+            
 
         return sum;
     }
+
+    /*
+    private methods of server
+    */
+    private double calculateRefusalProbability(int taskSize) {
+        return ((double)(taskSize - maxOps) / (5*maxOps)) * 100;
+    }
+
 }

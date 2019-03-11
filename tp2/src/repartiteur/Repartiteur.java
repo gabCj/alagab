@@ -154,49 +154,153 @@ public class Repartiteur {
         int operationsSent = 0;
         int nextServer = 0;
         ArrayList<Operation> task;
+        int taskSize = 0;
+        int numberOfRequest = 0; //This is just to compare how many server requests were made between various threshold values
 
-        while (operationsSent < operations.size() && servers.size() != 0) {
-            task = new ArrayList<Operation>();
-            int taskSize = calculateTaskSize(servers.get(nextServer).maxOps);
+        while (operationsSent < operations.size()) {
+            int taskResult = -1;
 
-            if (taskSize > (operations.size() - operationsSent)) {
-                taskSize = operations.size() - operationsSent;
-            }
+            //task result of -1 means the server refused the task
+            while (taskResult == -1) {
+                task = new ArrayList<Operation>();
+                taskSize = calculateTaskSize(servers.get(nextServer).maxOps);
+                
+                //make sure there are enough operations left for taskSize
+                if (taskSize > (operations.size() - operationsSent)) {
+                    taskSize = operations.size() - operationsSent;
+                }
 
-            for (int i = operationsSent; i < (operationsSent + taskSize); i++) {
-                task.add(operations.get(i));
-            }
+                //fill task with the next taskSize operations
+                for (int i = operationsSent; i < (operationsSent + taskSize); i++) {
+                    task.add(operations.get(i));
+                }
 
-            try {
-                sum = (sum + servers.get(nextServer).stub.calculate(task)) % 5000;
-
-                operationsSent += taskSize;
+                //send to server
+                try {
+                    taskResult = servers.get(nextServer).stub.calculate(task);
+                }catch(RemoteException e) {
+                    System.out.println("Tried accessing a server that shut down. Redistributing.");
+                    servers.remove(nextServer);
+                    if (servers.size() == 0) {
+                        System.out.println("There are no more active servers. Aborting.");
+                        return;
+                    }        
+                }
+                // move to next server
                 nextServer = (nextServer + 1) % servers.size();
-            } catch(RemoteException e) {
-                System.out.println("Tried accessing a server that shut down. Redistributing.");
-                servers.remove(nextServer);
-                if (servers.size() == 0)
-                    System.out.println("There are no more active servers. Aborting.");
-                nextServer = nextServer % servers.size();
+                numberOfRequest++;
             }
+            
+            //a server as calculated a result for current task
+            sum = (sum + taskResult) % 5000;
+            operationsSent += taskSize;
             
         }
 
-        System.out.println(sum);
+        //all done
+        System.out.println("The result is " + sum + ". This was calculated in " + numberOfRequest + " server requests.");
     }
 
     /*
     This method send distributes operations to servers for the non secure mode
     */
     private void sendToServersNotSecured() {
-        // A faire
+        int sum = 0;
+        int operationsSent = 0;
+        int nextServer1 = 0, nextServer2 = 0, nextServer3 = 0;
+        ArrayList<Operation> task;
+        int taskSize = 0;
+        int numberOfRequest = 0; //This is just to compare how many server requests were made between various threshold values
+
+        while (operationsSent < operations.size()) {
+            int taskResult1 = -1;
+            int taskResult2 = -1;
+            int taskResult3 = -1;
+
+            //task result of -1 means the server refused the task
+            while (taskResult1 == -1 || taskResult2 == -1 || taskResult3 == -1) {
+                task = new ArrayList<Operation>();
+
+                //get task size
+                int taskSize1 = calculateTaskSize(servers.get(nextServer1).maxOps);
+                nextServer2 = (nextServer1 + 1) % servers.size();
+                int taskSize2 = calculateTaskSize(servers.get(nextServer2).maxOps);
+                nextServer3 = (nextServer2 + 1) % servers.size();
+                int taskSize3 = calculateTaskSize(servers.get(nextServer3).maxOps);
+                
+                taskSize = Math.min(taskSize1, Math.min(taskSize2, taskSize3));
+                
+                //make sure there are enough operations left for taskSize
+                if (taskSize > (operations.size() - operationsSent)) {
+                    taskSize = operations.size() - operationsSent;
+                }
+
+                //fill task with the next taskSize operations
+                for (int i = operationsSent; i < (operationsSent + taskSize); i++) {
+                    task.add(operations.get(i));
+                }
+
+                //send to server
+                try {
+                    taskResult1 = servers.get(nextServer1).stub.calculate(task);
+                }catch(RemoteException e) {
+                    System.out.println("Tried accessing a server that shut down. Redistributing.");
+                    servers.remove(nextServer1);
+                    if (servers.size() == 0) {
+                        System.out.println("There are no more active servers. Aborting.");
+                        return;
+                    }        
+                }
+                try {
+                    taskResult2 = servers.get(nextServer2).stub.calculate(task);
+                }catch(RemoteException e) {
+                    System.out.println("Tried accessing a server that shut down. Redistributing.");
+                    servers.remove(nextServer2);
+                    if (servers.size() == 0) {
+                        System.out.println("There are no more active servers. Aborting.");
+                        return;
+                    }        
+                }
+                try {
+                    taskResult3 = servers.get(nextServer3).stub.calculate(task);
+                }catch(RemoteException e) {
+                    System.out.println("Tried accessing a server that shut down. Redistributing.");
+                    servers.remove(nextServer3);
+                    if (servers.size() == 0) {
+                        System.out.println("There are no more active servers. Aborting.");
+                        return;
+                    }        
+                }
+
+                nextServer1 = (nextServer3 + 1) % servers.size();
+                numberOfRequest += 3;
+            }
+            
+            //servers have calculated a result for current task
+            int taskResult = -1;
+            if (taskResult1 == taskResult2)
+                taskResult = taskResult1;
+            else if (taskResult1 == taskResult3)
+                taskResult = taskResult1;
+            else if (taskResult2 == taskResult3)
+                taskResult = taskResult2;
+
+            if (taskResult != -1) {
+                sum = (sum + taskResult) % 5000;
+                operationsSent += taskSize;
+            }      
+            
+        }
+
+        //all done
+        System.out.println("The result is " + sum + ". This was calculated in " + numberOfRequest + " server requests.");
     }
 
     /*
     This method calculates the size of the task to send to server based on threshold and qi
     */
     private int calculateTaskSize(int qi) {
-        return ((THRESHOLD / 100) * (5*qi)) + qi;
+        return (int) (((double)THRESHOLD / 100) * (5*qi)) + qi;
     }
 
 }

@@ -17,3 +17,14 @@ A noter :
                 1. Les noms de serveurs (./repartiteur.sh : <arg2> a <argN>) donner au repartiteur 
                    doivent etre les memes que ceux donner au serveur (./serveurCalcul.sh : <arg1>).
                 2. Les serveurs de calculs doivent etre partie/executer avant le repartiteur.
+
+Repartition :
+                1. Le repartiteur calcul la taille maximal de la prochaine tache.
+                   Celle ci doit avoir pour au moins un serveur, un taux de refus en bas de 25%.
+                2. Le repartiteur envoit la tache au serveur aillant le % le plus bas.
+                3. Si le serveur refuse, le repartiteur doit soit envoyer a un autre serveur avec un taux en bas de 25%,
+                   soit reduire la taille de la tache et recommencer.
+
+Serveur calcul : 1. Le serveur recoit une tache et calcul la probabilite qu'il refuse.
+                 2. Il compare la probabilite avec un nombre aleatoire entre 0 et 100 pour decider.
+                 3. S'il ne refuse pas, il fait les calculs et renvoit le resultat.
