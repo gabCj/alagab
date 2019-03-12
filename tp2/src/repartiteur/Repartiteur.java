@@ -254,7 +254,9 @@ public class Repartiteur {
                     if (servers.size() == 0) {
                         System.out.println("There are no more active servers. Aborting.");
                         return;
-                    }        
+                    } 
+                    nextServer1 = 0;
+                    continue;       
                 }
                 try {
                     taskResult2 = servers.get(nextServer2).stub.calculate(task, REPARTITEUR_NOM);
@@ -264,7 +266,9 @@ public class Repartiteur {
                     if (servers.size() == 0) {
                         System.out.println("There are no more active servers. Aborting.");
                         return;
-                    }        
+                    }
+                    nextServer1 = 0;
+                    continue;         
                 }
                 try {
                     taskResult3 = servers.get(nextServer3).stub.calculate(task, REPARTITEUR_NOM);
@@ -274,7 +278,9 @@ public class Repartiteur {
                     if (servers.size() == 0) {
                         System.out.println("There are no more active servers. Aborting.");
                         return;
-                    }        
+                    }
+                    nextServer1 = 0;
+                    continue;        
                 }
 
                 nextServer1 = (nextServer3 + 1) % servers.size();
