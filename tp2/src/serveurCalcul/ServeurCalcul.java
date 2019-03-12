@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import shared.ServeurCalculInterface;
+import shared.RepertoireNomsInterface;
 import shared.Operation;
 
 public class ServeurCalcul implements ServeurCalculInterface {
@@ -20,6 +21,7 @@ public class ServeurCalcul implements ServeurCalculInterface {
     
     private int maxOps;
     private int reliability;
+    RepertoireNomsInterface repertoireStub;
 
     public static void main(String[] args) {
         if (args.length >= 3) {
@@ -51,15 +53,13 @@ public class ServeurCalcul implements ServeurCalculInterface {
 
 	private void run(String id) {
 
-		/*if (System.getSecurityManager() == null) {
-			System.setSecurityManager(new SecurityManager());
-		}*/
-
 		try {
+            Registry registry = LocateRegistry.getRegistry();
+            repertoireStub = (RepertoireNomsInterface) registry.lookup("RepertoireNoms");
+
 			ServeurCalculInterface stub = (ServeurCalculInterface) UnicastRemoteObject
                 .exportObject(this, 0);
 
-			Registry registry = LocateRegistry.getRegistry();
 			registry.rebind(id, stub);
 			System.out.println("ServeurCalcul " + id + " ready.");
 		} catch (ConnectException e) {
@@ -81,17 +81,11 @@ public class ServeurCalcul implements ServeurCalculInterface {
     }
 
     @Override
-    public int pell(int x) throws RemoteException {
-        return Operations.pell(x);
-    }
-
-    @Override
-    public int prime(int x) throws RemoteException {
-        return Operations.prime(x);
-    }
-
-    @Override
-    public int calculate(ArrayList<Operation> task) throws RemoteException {
+    public int calculate(ArrayList<Operation> task, String nomRepartiteur) throws RemoteException {
+        if (!repertoireStub.verifyRepartiteur(nomRepartiteur)) {
+            System.out.println("task received from unverified repartiteur.");
+            return REFUSAL_CODE;
+        }
         System.out.println("task received. Task size = " + task.size());
         Random rand = new Random();
         if (task.size() > maxOps && rand.nextInt(100) + 1 <= calculateRefusalProbability(task.size())) {

@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import shared.ServeurCalculInterface;
+import shared.RepertoireNomsInterface;
 import shared.Operation;
 
 class Server {
@@ -27,13 +28,15 @@ class Server {
 }
 
 public class Repartiteur {
+    private final String REPARTITEUR_NOM = "repartiteur";
+    private final String REPARTITEUR_MP = "123";
     private final String FILE_PATH = "./operations/";
     private final String LOCAL_SERVER = "127.0.0.1";
     private final String DISTANT_SERVER = "132.207.89.143";
     private final String PRIME = "prime";
     private final String PELL = "pell";
     private final int THRESHOLD = 50;
-    private final boolean SECURE_MODE = true;
+    private final boolean SECURE_MODE = false;
 
     private ArrayList<Server> servers;
     private ArrayList<Operation> operations;
@@ -43,7 +46,7 @@ public class Repartiteur {
 
 		if (args.length >= 1) {
 			Repartiteur repartiteur = new Repartiteur(args[0]);
-		    repartiteur.run(args);
+		    repartiteur.run();
 		} else {
             System.out.println("Enter a file name for repartiteur.");
         }
@@ -55,27 +58,29 @@ public class Repartiteur {
         this.OperationsFileName = fileName;
         servers = new ArrayList<Server>();
         operations = new ArrayList<Operation>();
-		/*if (System.getSecurityManager() == null) {
-			System.setSecurityManager(new SecurityManager());
-		}*/
 	}
 
-	private void run(String[] serverIds) {
-        loadServerStubs(serverIds);
-        obtainServersLimit();
-        try {
-            appelRMIDistant();
-        } catch (ServerNotActiveException e) {
-            System.out.println("Erreur: " + e.getMessage());
-        }        
+	private void run() {
+        loadServerStubs();
+        if (servers.size() != 0) {
+            obtainServersLimit();
+            appelRMIDistant(); 
+        }      
 	}
 
-	private void loadServerStubs(String[] serverIds) {
+	private void loadServerStubs() {
 		try {
             Registry registry = LocateRegistry.getRegistry(LOCAL_SERVER);
-            for (int i = 1; i < serverIds.length; i++) {
-                servers.add(new Server((ServeurCalculInterface) registry.lookup(serverIds[i])));
+            RepertoireNomsInterface repertoireStub = (RepertoireNomsInterface) registry.lookup("RepertoireNoms");
+            ArrayList<String> serverIds;
+            serverIds = repertoireStub.authenticateRepartiteur(REPARTITEUR_NOM, REPARTITEUR_MP);
+
+            if (serverIds != null) {
+                for (String serverId : serverIds) {
+                    servers.add(new Server((ServeurCalculInterface) registry.lookup(serverId)));
+                }
             }
+            
 		} catch (NotBoundException e) {
 			System.out.println("Erreur: Le nom '" + e.getMessage()
 					+ "' n'est pas défini dans le registre.");
@@ -102,7 +107,7 @@ public class Repartiteur {
     /*
     This is the main method that uses stub and distributes operations to servers
     */
-	private void appelRMIDistant() throws ServerNotActiveException {
+	private void appelRMIDistant() {
         
         String filePath = FILE_PATH + OperationsFileName;
         File operationsFile = new File(filePath);
@@ -177,7 +182,7 @@ public class Repartiteur {
 
                 //send to server
                 try {
-                    taskResult = servers.get(nextServer).stub.calculate(task);
+                    taskResult = servers.get(nextServer).stub.calculate(task, REPARTITEUR_NOM);
                 }catch(RemoteException e) {
                     System.out.println("Tried accessing a server that shut down. Redistributing.");
                     servers.remove(nextServer);
@@ -242,7 +247,7 @@ public class Repartiteur {
 
                 //send to server
                 try {
-                    taskResult1 = servers.get(nextServer1).stub.calculate(task);
+                    taskResult1 = servers.get(nextServer1).stub.calculate(task, REPARTITEUR_NOM);
                 }catch(RemoteException e) {
                     System.out.println("Tried accessing a server that shut down. Redistributing.");
                     servers.remove(nextServer1);
@@ -252,7 +257,7 @@ public class Repartiteur {
                     }        
                 }
                 try {
-                    taskResult2 = servers.get(nextServer2).stub.calculate(task);
+                    taskResult2 = servers.get(nextServer2).stub.calculate(task, REPARTITEUR_NOM);
                 }catch(RemoteException e) {
                     System.out.println("Tried accessing a server that shut down. Redistributing.");
                     servers.remove(nextServer2);
@@ -262,7 +267,7 @@ public class Repartiteur {
                     }        
                 }
                 try {
-                    taskResult3 = servers.get(nextServer3).stub.calculate(task);
+                    taskResult3 = servers.get(nextServer3).stub.calculate(task, REPARTITEUR_NOM);
                 }catch(RemoteException e) {
                     System.out.println("Tried accessing a server that shut down. Redistributing.");
                     servers.remove(nextServer3);

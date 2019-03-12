@@ -12,4 +12,4 @@ HELP:
 
 EndOfMessage
 
-java -cp "$basepath"/repartiteur.jar:"$basepath"/shared.jar -Djava.security.policy="$basepath"/policy repartiteur.Repartiteur $*
+java -cp "$basepath"/repartiteur.jar:"$basepath"/shared.jar -Djava.security.policy="$basepath"/policy repartiteur.Repartiteur $1

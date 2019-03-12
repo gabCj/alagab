@@ -9,14 +9,16 @@ Pour executer :
                                         <arg3> = Le % m pour la fiabilite du serveur. Doit etre entre 0 et 100 (obligatoire)
                                         <arg4> = l'adresse IP du serveur (optionnel)
                 
-                3. Repartiteur : commande "./repartiteur.sh <arg1> <arg2> <...> <argN>" a partir du dossier "tp2"
-                                    <arg1> = Le fichier d'operations. Ils sont dans le repertoire "operations" (obligatoire)
-                                    <arg2> a <argN> = les noms des serveurs de calculs (optionnel) 
+                3. Repertoire de noms : commande "./repertoireNoms.sh <arg1> <...> <argN>" a partir du dossier "tp2"
+                                        <arg1> a <argN> = les noms des serveurs de calculs (optionnel) 
+                
+                4. Repartiteur : commande "./repartiteur.sh <arg1>" a partir du dossier "tp2"
+                                        <arg1> = Le fichier d'operations. Ils sont dans le repertoire "operations" (obligatoire)
 
 A noter :
-                1. Les noms de serveurs (./repartiteur.sh : <arg2> a <argN>) donner au repartiteur 
+                1. Les noms de serveurs (./repartiteur.sh : <arg1> a <argN>) donner au repartiteur 
                    doivent etre les memes que ceux donner au serveur (./serveurCalcul.sh : <arg1>).
-                2. Les serveurs de calculs doivent etre partie/executer avant le repartiteur.
+                2. Les serveurs de calculs et repertoire de noms doivent etre partie/executer avant le repartiteur.
 
 Repartition :
                 1. Le repartiteur calcul la taille maximal de la prochaine tache.
