@@ -31,30 +31,26 @@ public class Repartiteur {
     private final String REPARTITEUR_NOM = "repartiteur";
     private final String REPARTITEUR_MP = "123";
     private final String FILE_PATH = "./operations/";
-    private final String LOCAL_SERVER = "127.0.0.1";
     private final String DISTANT_SERVER = "132.207.89.143";
     private final String PRIME = "prime";
     private final String PELL = "pell";
     private final int THRESHOLD = 50;
-    private final boolean SECURE_MODE = false;
+    private final boolean SECURE_MODE = true;
 
     private ArrayList<Server> servers;
     private ArrayList<Operation> operations;
     private String OperationsFileName;
 
     public static void main(String[] args) {
-
 		if (args.length >= 1) {
 			Repartiteur repartiteur = new Repartiteur(args[0]);
 		    repartiteur.run();
 		} else {
-            System.out.println("Enter a file name for repartiteur.");
-        }
-		
+            System.out.println("Enter an operation file name for repartiteur.");
+        }	
 	}
 
 	public Repartiteur(String fileName) {
-		super();
         this.OperationsFileName = fileName;
         servers = new ArrayList<Server>();
         operations = new ArrayList<Operation>();
@@ -64,15 +60,17 @@ public class Repartiteur {
         loadServerStubs();
         if (servers.size() != 0) {
             obtainServersLimit();
-            appelRMIDistant(); 
+            distributeOperations(); 
         }      
 	}
 
 	private void loadServerStubs() {
 		try {
-            Registry registry = LocateRegistry.getRegistry(LOCAL_SERVER);
+            Registry registry = LocateRegistry.getRegistry(/*DISTANT_SERVER*/);
             RepertoireNomsInterface repertoireStub = (RepertoireNomsInterface) registry.lookup("RepertoireNoms");
             ArrayList<String> serverIds;
+
+            //Ask RepertoireNoms for servers
             serverIds = repertoireStub.authenticateRepartiteur(REPARTITEUR_NOM, REPARTITEUR_MP);
 
             if (serverIds != null) {
@@ -92,7 +90,7 @@ public class Repartiteur {
     }
     
     /*
-    This method is used Repartiteur start with the ids given to obtain each of those server's max ops limit.
+    This method is used by Repartiteur with the server ids to obtain each of those server's max ops limit.
     */
     private void obtainServersLimit() {
         try {
@@ -107,7 +105,7 @@ public class Repartiteur {
     /*
     This is the main method that uses stub and distributes operations to servers
     */
-	private void appelRMIDistant() {
+	private void distributeOperations() {
         
         String filePath = FILE_PATH + OperationsFileName;
         File operationsFile = new File(filePath);
@@ -131,6 +129,7 @@ public class Repartiteur {
                 sendOpsToServersSecured();
             else
                 sendToServersNotSecured();
+
 		} catch (NumberFormatException e) {
             System.out.println("The file contains invalid operations and/or structure.");
         } catch (FileNotFoundException e) {
@@ -155,13 +154,14 @@ public class Repartiteur {
     This method send distributes operations to servers for the secure mode
     */
     private void sendOpsToServersSecured() {
-        int sum = 0;
-        int operationsSent = 0;
-        int nextServer = 0;
+        int sum = 0; //operation results sum
+        int operationsSent = 0; //distribution progress
+        int nextServer = 0; //server index for distribution
         ArrayList<Operation> task;
         int taskSize = 0;
-        int numberOfRequest = 0; //This is just to compare how many server requests were made between various threshold values
+        int numberOfRequest = 0; //How many server requests were made during distribution
 
+        long start = System.nanoTime();
         while (operationsSent < operations.size()) {
             int taskResult = -1;
 
@@ -183,6 +183,7 @@ public class Repartiteur {
                 //send to server
                 try {
                     taskResult = servers.get(nextServer).stub.calculate(task, REPARTITEUR_NOM);
+                    numberOfRequest++;
                 }catch(RemoteException e) {
                     System.out.println("Tried accessing a server that shut down. Redistributing.");
                     servers.remove(nextServer);
@@ -191,38 +192,40 @@ public class Repartiteur {
                         return;
                     }        
                 }
+
                 // move to next server
                 nextServer = (nextServer + 1) % servers.size();
-                numberOfRequest++;
             }
             
             //a server as calculated a result for current task
             sum = (sum + taskResult) % 5000;
             operationsSent += taskSize;
-            
         }
+        long end = System.nanoTime();
 
         //all done
-        System.out.println("The result is " + sum + ". This was calculated in " + numberOfRequest + " server requests.");
+        System.out.println("The result is " + sum + ". This was calculated in " + 
+                            numberOfRequest + " server requests in " + (end - start) + " seconds.");
     }
 
     /*
     This method send distributes operations to servers for the non secure mode
     */
     private void sendToServersNotSecured() {
-        int sum = 0;
-        int operationsSent = 0;
-        int nextServer1 = 0, nextServer2 = 0, nextServer3 = 0;
+        int sum = 0; //operation results sum
+        int operationsSent = 0; //distribution progress
+        int nextServer1 = 0, nextServer2 = 0, nextServer3 = 0; //server indexes for distribution
         ArrayList<Operation> task;
         int taskSize = 0;
-        int numberOfRequest = 0; //This is just to compare how many server requests were made between various threshold values
+        int numberOfRequest = 0; //How many server requests were made during distribution
 
+        long start = System.nanoTime();
         while (operationsSent < operations.size()) {
             int taskResult1 = -1;
             int taskResult2 = -1;
             int taskResult3 = -1;
 
-            //task result of -1 means the server refused the task
+            //task result of -1 means the server refused the task. All server must have a result before comparing in unsecured mode.
             while (taskResult1 == -1 || taskResult2 == -1 || taskResult3 == -1) {
                 task = new ArrayList<Operation>();
 
@@ -233,7 +236,7 @@ public class Repartiteur {
                 nextServer3 = (nextServer2 + 1) % servers.size();
                 int taskSize3 = calculateTaskSize(servers.get(nextServer3).maxOps);
                 
-                taskSize = Math.min(taskSize1, Math.min(taskSize2, taskSize3));
+                taskSize = Math.min(taskSize1, Math.min(taskSize2, taskSize3)); //task must be the same for all 3 servers.
                 
                 //make sure there are enough operations left for taskSize
                 if (taskSize > (operations.size() - operationsSent)) {
@@ -248,6 +251,7 @@ public class Repartiteur {
                 //send to server
                 try {
                     taskResult1 = servers.get(nextServer1).stub.calculate(task, REPARTITEUR_NOM);
+                    numberOfRequest++;
                 }catch(RemoteException e) {
                     System.out.println("Tried accessing a server that shut down. Redistributing.");
                     servers.remove(nextServer1);
@@ -258,6 +262,7 @@ public class Repartiteur {
                 }
                 try {
                     taskResult2 = servers.get(nextServer2).stub.calculate(task, REPARTITEUR_NOM);
+                    numberOfRequest++;
                 }catch(RemoteException e) {
                     System.out.println("Tried accessing a server that shut down. Redistributing.");
                     servers.remove(nextServer2);
@@ -268,6 +273,7 @@ public class Repartiteur {
                 }
                 try {
                     taskResult3 = servers.get(nextServer3).stub.calculate(task, REPARTITEUR_NOM);
+                    numberOfRequest++;
                 }catch(RemoteException e) {
                     System.out.println("Tried accessing a server that shut down. Redistributing.");
                     servers.remove(nextServer3);
@@ -278,7 +284,6 @@ public class Repartiteur {
                 }
 
                 nextServer1 = (nextServer3 + 1) % servers.size();
-                numberOfRequest += 3;
             }
             
             //servers have calculated a result for current task
@@ -296,9 +301,11 @@ public class Repartiteur {
             }      
             
         }
+        long end = System.nanoTime();
 
         //all done
-        System.out.println("The result is " + sum + ". This was calculated in " + numberOfRequest + " server requests.");
+        System.out.println("The result is " + sum + ". This was calculated in " + 
+                            numberOfRequest + " server requests in " + (end - start) + " seconds.");
     }
 
     /*
