@@ -27,7 +27,7 @@ public class RepertoireNoms implements RepertoireNomsInterface {
         super();
         this.serverDomains = new ArrayList<String>();
         repartiteurAuthenticated = false;
-        for (int i = 0; i < serverDomains.length; i++) {
+        for (int i = 1; i < serverDomains.length; i++) {
             this.serverDomains.add(serverDomains[i]);
         }
     }
