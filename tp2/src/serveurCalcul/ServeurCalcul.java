@@ -27,6 +27,11 @@ public class ServeurCalcul implements ServeurCalculInterface {
         if (args.length >= 3) {
             try {
                 int max = Integer.parseInt(args[1]);
+                if (max <= 0)
+                {
+                    System.out.println("Second server argument must be between higher than 0.");
+                    return;
+                }
                 int reliability = Integer.parseInt(args[2]);
                 if (reliability < 0 || reliability > 100) {
                     System.out.println("Third server argument must be between 0 and 100.");
@@ -35,7 +40,7 @@ public class ServeurCalcul implements ServeurCalculInterface {
                 ServeurCalcul server = new ServeurCalcul(max, reliability);
 		        server.run(args[0]);
             } catch (NumberFormatException e) {
-                System.out.println("Second server argument must be a number.");
+                System.out.println("Second and third server argument must be a number.");
             }   
         } else {
             System.out.println("First server argument for server Id.");
@@ -82,10 +87,12 @@ public class ServeurCalcul implements ServeurCalculInterface {
 
     @Override
     public int calculate(ArrayList<Operation> task, String nomRepartiteur) throws RemoteException {
+        //validate repartiteur
         if (!repertoireStub.verifyRepartiteur(nomRepartiteur)) {
             System.out.println("task received from unverified repartiteur.");
             return REFUSAL_CODE;
         }
+
         System.out.println("task received. Task size = " + task.size());
         Random rand = new Random();
         if (task.size() > maxOps && rand.nextInt(100) + 1 <= calculateRefusalProbability(task.size())) {
@@ -103,19 +110,18 @@ public class ServeurCalcul implements ServeurCalculInterface {
             sum = sum % 5000;
         }
 
-        
+        //Check if unreliable servers should falsify result
         int random = rand.nextInt(100) + 1;
-        if (random <= reliability) { //falsify result
+        if (random <= reliability) {
             sum += rand.nextInt(100);
             System.out.println("Oups! False result returned.");
         }
             
-
         return sum;
     }
 
     /*
-    private methods of server
+    Formula of T
     */
     private double calculateRefusalProbability(int taskSize) {
         return ((double)(taskSize - maxOps) / (5*maxOps)) * 100;

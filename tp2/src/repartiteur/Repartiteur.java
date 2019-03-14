@@ -34,8 +34,9 @@ public class Repartiteur {
     private final String DISTANT_SERVER = "132.207.89.143";
     private final String PRIME = "prime";
     private final String PELL = "pell";
+    private final int REFUSAL_CODE = -1;
     private final int THRESHOLD = 50;
-    private final boolean SECURE_MODE = true;
+    private final boolean SECURE_MODE = false; //Change this to move between secure and non secured modes.
 
     private ArrayList<Server> servers;
     private ArrayList<Operation> operations;
@@ -57,14 +58,11 @@ public class Repartiteur {
 	}
 
 	private void run() {
-        loadServerStubs();
-        if (servers.size() != 0) {
-            obtainServersLimit();
-            distributeOperations(); 
-        }      
+        if (loadServerStubs() && obtainServersLimit())
+            distributeOperations();     
 	}
 
-	private void loadServerStubs() {
+	private boolean loadServerStubs() {
 		try {
             Registry registry = LocateRegistry.getRegistry(/*DISTANT_SERVER*/);
             RepertoireNomsInterface repertoireStub = (RepertoireNomsInterface) registry.lookup("RepertoireNoms");
@@ -77,8 +75,9 @@ public class Repartiteur {
                 for (String serverId : serverIds) {
                     servers.add(new Server((ServeurCalculInterface) registry.lookup(serverId)));
                 }
+                return true;
             }
-            
+            System.out.println("Failed to validate Repartiteur identity.");
 		} catch (NotBoundException e) {
 			System.out.println("Erreur: Le nom '" + e.getMessage()
 					+ "' n'est pas défini dans le registre.");
@@ -86,20 +85,23 @@ public class Repartiteur {
 			System.out.println("Erreur: " + e.getMessage());
 		} catch (RemoteException e) {
 			System.out.println("Erreur: " + e.getMessage());
-		}
+        }
+        return false;
     }
     
     /*
     This method is used by Repartiteur with the server ids to obtain each of those server's max ops limit.
     */
-    private void obtainServersLimit() {
+    private boolean obtainServersLimit() {
         try {
             for (Server server : servers) {
                 server.maxOps = server.stub.obtainServerMaxOps();
             }
+            return true;
         } catch(RemoteException e) {
             System.out.println("Erreur: " + e.getMessage());
         }    
+        return false;
     }
 
     /*
@@ -163,10 +165,9 @@ public class Repartiteur {
 
         long start = System.nanoTime();
         while (operationsSent < operations.size()) {
-            int taskResult = -1;
+            int taskResult = REFUSAL_CODE;
 
-            //task result of -1 means the server refused the task
-            while (taskResult == -1) {
+            while (taskResult == REFUSAL_CODE) {
                 task = new ArrayList<Operation>();
                 taskSize = calculateTaskSize(servers.get(nextServer).maxOps);
                 
@@ -205,7 +206,7 @@ public class Repartiteur {
 
         //all done
         System.out.println("The result is " + sum + ". This was calculated in " + 
-                            numberOfRequest + " server requests in " + (end - start) + " seconds.");
+                            numberOfRequest + " server requests in " + (end - start) + " ns.");
     }
 
     /*
@@ -221,12 +222,12 @@ public class Repartiteur {
 
         long start = System.nanoTime();
         while (operationsSent < operations.size()) {
-            int taskResult1 = -1;
-            int taskResult2 = -1;
-            int taskResult3 = -1;
+            int taskResult1 = REFUSAL_CODE;
+            int taskResult2 = REFUSAL_CODE;
+            int taskResult3 = REFUSAL_CODE;
 
-            //task result of -1 means the server refused the task. All server must have a result before comparing in unsecured mode.
-            while (taskResult1 == -1 || taskResult2 == -1 || taskResult3 == -1) {
+            //All server must have a result before comparing in unsecured mode.
+            while (taskResult1 == REFUSAL_CODE || taskResult2 == REFUSAL_CODE || taskResult3 == REFUSAL_CODE) {
                 task = new ArrayList<Operation>();
 
                 //get task size
@@ -248,7 +249,7 @@ public class Repartiteur {
                     task.add(operations.get(i));
                 }
 
-                //send to server
+                //send to servers
                 try {
                     taskResult1 = servers.get(nextServer1).stub.calculate(task, REPARTITEUR_NOM);
                     numberOfRequest++;
@@ -259,6 +260,7 @@ public class Repartiteur {
                         System.out.println("There are no more active servers. Aborting.");
                         return;
                     } 
+                    //go back to loop start to avoid accessing server array out of bounds
                     nextServer1 = 0;
                     continue;       
                 }
@@ -272,6 +274,7 @@ public class Repartiteur {
                         System.out.println("There are no more active servers. Aborting.");
                         return;
                     }
+                    //go back to loop start to avoid accessing server array out of bounds
                     nextServer1 = 0;
                     continue;         
                 }
@@ -285,6 +288,7 @@ public class Repartiteur {
                         System.out.println("There are no more active servers. Aborting.");
                         return;
                     }
+                    //go back to loop start to avoid accessing server array out of bounds
                     nextServer1 = 0;
                     continue;        
                 }
@@ -311,11 +315,12 @@ public class Repartiteur {
 
         //all done
         System.out.println("The result is " + sum + ". This was calculated in " + 
-                            numberOfRequest + " server requests in " + (end - start) + " seconds.");
+                            numberOfRequest + " server requests in " + (end - start) + " ns.");
     }
 
     /*
-    This method calculates the size of the task to send to server based on threshold and qi
+    This method calculates the size of the task to send to server based on threshold and qi.
+    It is based off the formula for T.
     */
     private int calculateTaskSize(int qi) {
         return (int) (((double)THRESHOLD / 100) * (5*qi)) + qi;
