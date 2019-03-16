@@ -10,7 +10,8 @@ Pour executer :
                                         <arg4> = Le port du registre rmi pour le serveur (obligatoire)
                                         <arg5> = l'adresse IP du serveur (optionnel)
                 
-                3. Repertoire de noms : commande "./repertoireNoms.sh" a partir du dossier "tp2"
+                3. Repertoire de noms : commande "./repertoireNoms.sh <arg1>" a partir du dossier "tp2"
+                                        <arg1> = L'adresse IP du repertoire (optionnel)
                 
                 4. Repartiteur : commande "./repartiteur.sh <arg1>" a partir du dossier "tp2"
                                         <arg1> = Le fichier d'operations. Ils sont dans le repertoire "operations" (obligatoire)
@@ -18,3 +19,5 @@ Pour executer :
 Important :
                 1. Il est important de specifier dans serverList/servers.txt le nom des serveurs instantier et leur port.
                 2. Les serveurs de calculs et repertoire de noms doivent etre partie/executer avant le repartiteur.
+                3. Pour changer le mode securise, il y a un attribut boolean dans src/repartiteur/repartiteur.java qui doit etre changer.
+                4. Si <arg5> et <arg1> de serveur calcul et repertoire de noms (les arg optionnels) ne sont pas fournis, ces serveurs s'executeront sur 127.0.0.1
