@@ -24,7 +24,7 @@ public class ServeurCalcul implements ServeurCalculInterface {
     RepertoireNomsInterface repertoireStub;
 
     public static void main(String[] args) {
-        if (args.length >= 3) {
+        if (args.length >= 4) {
             try {
                 int max = Integer.parseInt(args[1]);
                 if (max <= 0)
@@ -37,16 +37,22 @@ public class ServeurCalcul implements ServeurCalculInterface {
                     System.out.println("Third server argument must be between 0 and 100.");
                     return;
                 }
+                int port = Integer.parseInt(args[3]);
+                if (port < 5000 || port > 5050) {
+                    System.out.println("Fourth server argument must be between 5000 and 5050.");
+                    return;
+                }
                 ServeurCalcul server = new ServeurCalcul(max, reliability);
-		        server.run(args[0]);
+		        server.run(args[0],port);
             } catch (NumberFormatException e) {
-                System.out.println("Second and third server argument must be a number.");
+                System.out.println("Second, third and fourth server argument must be numbers.");
             }   
         } else {
             System.out.println("First server argument for server Id.");
             System.out.println("Second server argument for max number of operations.");
             System.out.println("Third server argument for server reliability (0% to 100%).");
-            System.out.println("Fourth server argument for distant IP addr (optional).");
+            System.out.println("Fourth server argument for server port (between 5000 and 5050).");
+            System.out.println("Fifth server argument for distant IP addr (optional).");
         }
 	}
 
@@ -56,17 +62,18 @@ public class ServeurCalcul implements ServeurCalculInterface {
         this.reliability = reliability;
 	}
 
-	private void run(String id) {
+	private void run(String serverId, int port) {
 
 		try {
-            Registry registry = LocateRegistry.getRegistry();
-            repertoireStub = (RepertoireNomsInterface) registry.lookup("RepertoireNoms");
+            Registry registry1 = LocateRegistry.getRegistry();
+            repertoireStub = (RepertoireNomsInterface) registry1.lookup("RepertoireNoms");
 
+            Registry registry2 = LocateRegistry.createRegistry(port);
 			ServeurCalculInterface stub = (ServeurCalculInterface) UnicastRemoteObject
-                .exportObject(this, 0);
+                .exportObject(this, port);
 
-			registry.rebind(id, stub);
-			System.out.println("ServeurCalcul " + id + " ready.");
+            registry2.rebind(serverId, stub);
+			System.out.println("ServeurCalcul " + serverId + " ready.");
 		} catch (ConnectException e) {
 			System.err
 					.println("Impossible de se connecter au registre RMI. Est-ce que rmiregistry est lancé ?");

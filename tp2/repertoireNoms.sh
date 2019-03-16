@@ -22,4 +22,4 @@ java -cp "$basepath"/repertoireNoms.jar:"$basepath"/shared.jar \
   -Djava.rmi.server.codebase=file:"$basepath"/shared.jar \
   -Djava.security.policy="$basepath"/policy \
   -Djava.rmi.server.hostname="$IPADDR" \
-  repertoireNoms.RepertoireNoms $*
+  repertoireNoms.RepertoireNoms

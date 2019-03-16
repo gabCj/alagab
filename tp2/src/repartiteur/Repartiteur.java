@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import shared.ServeurCalculInterface;
 import shared.RepertoireNomsInterface;
 import shared.Operation;
+import shared.ServerInfo;
 
 class Server {
     Server(ServeurCalculInterface stub) {
@@ -32,11 +33,12 @@ public class Repartiteur {
     private final String REPARTITEUR_MP = "123";
     private final String FILE_PATH = "./operations/";
     private final String DISTANT_SERVER = "132.207.89.143";
+    private final String LOCAL_SERVER = "127.0.0.1";
     private final String PRIME = "prime";
     private final String PELL = "pell";
     private final int REFUSAL_CODE = -1;
     private final int THRESHOLD = 50;
-    private final boolean SECURE_MODE = false; //Change this to move between secure and non secured modes.
+    private final boolean SECURE_MODE = false; //Change this to move between secure and non secure modes.
 
     private ArrayList<Server> servers;
     private ArrayList<Operation> operations;
@@ -44,10 +46,10 @@ public class Repartiteur {
 
     public static void main(String[] args) {
 		if (args.length >= 1) {
-			Repartiteur repartiteur = new Repartiteur(args[0]);
+            Repartiteur repartiteur = new Repartiteur(args[0]);
 		    repartiteur.run();
 		} else {
-            System.out.println("Enter an operation file name for repartiteur.");
+            System.out.println("First repartiteur argument is operations file.");
         }	
 	}
 
@@ -63,55 +65,75 @@ public class Repartiteur {
 	}
 
 	private boolean loadServerStubs() {
-		try {
-            Registry registry = LocateRegistry.getRegistry(/*DISTANT_SERVER*/);
+
+        ArrayList<ServerInfo> serverInfos = getServerInfos();
+
+        if (serverInfos != null) {
+            checkAndLoadServers(serverInfos);
+            return true;
+        }
+
+        System.out.println("Failed to validate Repartiteur identity.");
+        return false;
+    }
+
+    private ArrayList<ServerInfo> getServerInfos() {
+        try {
+            Registry registry = LocateRegistry.getRegistry(LOCAL_SERVER);
             RepertoireNomsInterface repertoireStub = (RepertoireNomsInterface) registry.lookup("RepertoireNoms");
-            ArrayList<String> serverIds;
 
             //Ask RepertoireNoms for servers
-            serverIds = repertoireStub.authenticateRepartiteur(REPARTITEUR_NOM, REPARTITEUR_MP);
-
-            if (serverIds != null) {
-                for (String serverId : serverIds) {
-                    servers.add(new Server((ServeurCalculInterface) registry.lookup(serverId)));
-                }
-                return true;
-            }
-            System.out.println("Failed to validate Repartiteur identity.");
+            return repertoireStub.authenticateRepartiteur(REPARTITEUR_NOM, REPARTITEUR_MP);      
 		} catch (NotBoundException e) {
 			System.out.println("Erreur: Le nom '" + e.getMessage()
 					+ "' n'est pas défini dans le registre.");
 		} catch (AccessException e) {
-			System.out.println("Erreur: " + e.getMessage());
+			System.out.println("AccessException: " + e.getMessage());
 		} catch (RemoteException e) {
-			System.out.println("Erreur: " + e.getMessage());
+			System.out.println("RemoteException: " + e.getMessage());
         }
-        return false;
+        return null;
+    }
+
+    private void checkAndLoadServers(ArrayList<ServerInfo> serverInfos) {
+        for (ServerInfo serverInfo : serverInfos) {
+            try {
+                Registry registry = LocateRegistry.getRegistry(LOCAL_SERVER, serverInfo.port);
+                ServeurCalculInterface stub = (ServeurCalculInterface) registry.lookup(serverInfo.serverId);
+                servers.add(new Server(stub));
+            } catch (NotBoundException e) {
+                System.out.println("Server " + serverInfo.serverId + " could not be loaded. Server is not running.");
+            } catch (AccessException e) {
+                System.out.println("Server " + serverInfo.serverId + " could not be loaded.");
+            }  catch (RemoteException e) {
+                System.out.println("Server " + serverInfo.serverId + " could not be loaded. No existing registry for this port.");
+            }   
+        }
     }
     
     /*
     This method is used by Repartiteur with the server ids to obtain each of those server's max ops limit.
     */
     private boolean obtainServersLimit() {
-        try {
-            for (Server server : servers) {
+        for (Server server : servers) {
+            try {
                 server.maxOps = server.stub.obtainServerMaxOps();
-            }
-            return true;
-        } catch(RemoteException e) {
-            System.out.println("Erreur: " + e.getMessage());
-        }    
-        return false;
+            } catch(RemoteException e) {
+                System.out.println("Error getting server qi : " + e.getMessage());
+                return false;
+            }    
+        }
+        return true;
     }
 
     /*
     This is the main method that uses stub and distributes operations to servers
     */
 	private void distributeOperations() {
-        
         String filePath = FILE_PATH + OperationsFileName;
         File operationsFile = new File(filePath);
         try {
+            
             BufferedReader br = new BufferedReader(new FileReader(operationsFile));
             String line;
             String[] parsedOperation; 
@@ -127,6 +149,7 @@ public class Repartiteur {
                 
                 operations.add(new Operation(parsedOperation[0], x));
             }
+            br.close();
             if (SECURE_MODE)  
                 sendOpsToServersSecured();
             else
@@ -137,7 +160,7 @@ public class Repartiteur {
         } catch (FileNotFoundException e) {
             System.out.println("The file contains invalid operations and/or structure.");
         } catch (IOException e) {
-            System.out.println("Erreur: " + e.getMessage());
+            System.out.println("Error reading operations file: " + e.getMessage());
         }
     }
 

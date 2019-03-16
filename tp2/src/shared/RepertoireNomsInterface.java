@@ -7,7 +7,7 @@ import java.util.ArrayList;
 
 public interface RepertoireNomsInterface extends Remote {
 
-    ArrayList<String> authenticateRepartiteur(String name, String password) throws RemoteException;
+    ArrayList<ServerInfo> authenticateRepartiteur(String name, String password) throws RemoteException;
 
     boolean verifyRepartiteur(String name) throws RemoteException;
 }

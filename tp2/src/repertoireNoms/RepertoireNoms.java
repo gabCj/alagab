@@ -1,5 +1,7 @@
 package repertoireNoms;
 
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.rmi.ConnectException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -8,32 +10,74 @@ import java.rmi.server.RemoteServer;
 import java.rmi.server.ServerNotActiveException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 
 import shared.RepertoireNomsInterface;
+import shared.ServerInfo;
 
 public class RepertoireNoms implements RepertoireNomsInterface {
+    private final String SERVER_LIST_PATH = "serverList/servers.txt";
     private final String REPARTITEUR_NOM = "repartiteur";
     private final String REPARTITEUR_MP = "123";
 
-    private ArrayList<String> serverDomains;
+    private ArrayList<ServerInfo> serverDomains;
     private boolean repartiteurAuthenticated;
 
     public static void main(String[] args) {
-            RepertoireNoms repertoire = new RepertoireNoms(args);
-            repertoire.run();    
+        RepertoireNoms repertoire = new RepertoireNoms();
+        repertoire.run();    
+        /*if (args.length >= 1) {
+                int port;
+                try {
+                    port = Integer.parseInt(args[0]);
+                    if (port < 5000 || port > 5050) {
+                        System.out.println("first argument must be between 5000 and 5050.");
+                        return;
+                    }
+                    RepertoireNoms repertoire = new RepertoireNoms();
+                    repertoire.run(port);
+                } catch (NumberFormatException e) {
+                    System.out.println("first argument must be a number.");
+                }
+                 
+            }
+            else {
+                System.out.println("First argument is repertoireNoms port.");
+                System.out.println("Second argument is repertoireNoms IP.");
+            }   */       
     }
     
-    public RepertoireNoms(String[] serverDomains) {
+    public RepertoireNoms() {
         super();
-        this.serverDomains = new ArrayList<String>();
+        this.serverDomains = new ArrayList<ServerInfo>();
         repartiteurAuthenticated = false;
-        for (int i = 1; i < serverDomains.length; i++) {
-            this.serverDomains.add(serverDomains[i]);
-        }
     }
 
-    private void run() {
+    private void obtainServerList() throws FileNotFoundException, IOException {
+        File file = new File(SERVER_LIST_PATH);
+        BufferedReader br = new BufferedReader(new FileReader(file));
+        String serverInfo;
+        while ((serverInfo = br.readLine()) != null) {
+            String[] parsedInfo = serverInfo.split(" ");
+            int port;
+            try {
+                port = Integer.parseInt(parsedInfo[1]);
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            serverDomains.add(new ServerInfo(parsedInfo[0], port));
+        }
+        br.close();
+    }
+
+    private void run(/*int port*/) {
 		try {
+            obtainServerList();
+
 			RepertoireNomsInterface stub = (RepertoireNomsInterface) UnicastRemoteObject
                 .exportObject(this, 0);
 
@@ -53,7 +97,7 @@ public class RepertoireNoms implements RepertoireNomsInterface {
     /*
     Methodes accessibles par RMI
     */
-    public ArrayList<String> authenticateRepartiteur(String name, String password) throws RemoteException {
+    public ArrayList<ServerInfo> authenticateRepartiteur(String name, String password) throws RemoteException {
         if (name.equals(REPARTITEUR_NOM) && password.equals(REPARTITEUR_MP)) {
             repartiteurAuthenticated = true;
             return serverDomains;

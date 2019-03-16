@@ -3,30 +3,18 @@ Pour compiler le code : commande "ant" a partir du dossier "tp2"
 Pour executer : 
                 1. commande "rmiregistry &" a partir du dossier "bin"
                 
-                2. Serveur de Calcul : commande "./serveurCalcul.sh <arg1> <arg2> <arg3> <arg4>" a partir du dossier "tp2"
+                2. Serveur de Calcul : commande "./serveurCalcul.sh <arg1> <arg2> <arg3> <arg4> <arg5>" a partir du dossier "tp2"
                                         <arg1> = Le nom du serveur (obligatoire)
                                         <arg2> = Le nombre maximum d'operations que le repartiteur peut envoyer a ce serveur (obligatoire)
                                         <arg3> = Le % m pour la fiabilite du serveur. Doit etre entre 0 et 100 (obligatoire)
-                                        <arg4> = l'adresse IP du serveur (optionnel)
+                                        <arg4> = Le port du registre rmi pour le serveur (obligatoire)
+                                        <arg5> = l'adresse IP du serveur (optionnel)
                 
-                3. Repertoire de noms : commande "./repertoireNoms.sh <arg1> <...> <argN>" a partir du dossier "tp2"
-                                        <arg1> a <argN> = les noms des serveurs de calculs (optionnel) 
+                3. Repertoire de noms : commande "./repertoireNoms.sh" a partir du dossier "tp2"
                 
                 4. Repartiteur : commande "./repartiteur.sh <arg1>" a partir du dossier "tp2"
                                         <arg1> = Le fichier d'operations. Ils sont dans le repertoire "operations" (obligatoire)
 
-A noter :
-                1. Les noms de serveurs (./repartiteur.sh : <arg1> a <argN>) donner au repartiteur 
-                   doivent etre les memes que ceux donner au serveur (./serveurCalcul.sh : <arg1>).
+Important :
+                1. Il est important de specifier dans serverList/servers.txt le nom des serveurs instantier et leur port.
                 2. Les serveurs de calculs et repertoire de noms doivent etre partie/executer avant le repartiteur.
-
-Repartition :
-                1. Le repartiteur calcul la taille maximal de la prochaine tache.
-                   Celle ci doit avoir pour au moins un serveur, un taux de refus en bas de 25%.
-                2. Le repartiteur envoit la tache au serveur aillant le % le plus bas.
-                3. Si le serveur refuse, le repartiteur doit soit envoyer a un autre serveur avec un taux en bas de 25%,
-                   soit reduire la taille de la tache et recommencer.
-
-Serveur calcul : 1. Le serveur recoit une tache et calcul la probabilite qu'il refuse.
-                 2. Il compare la probabilite avec un nombre aleatoire entre 0 et 100 pour decider.
-                 3. S'il ne refuse pas, il fait les calculs et renvoit le resultat.
