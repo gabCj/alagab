@@ -1,0 +1,30 @@
+Pour compiler le code : commande "ant" a partir du dossier central
+
+Pour executer : 
+                1. commande "rmiregistry 5000&" a partir du dossier "bin"
+                
+                2. Serveur de Calcul : commande "./serveurCalcul.sh <arg1> <arg2> <arg3> <arg4>" a partir du dossier central
+                                        <arg1> = Le nom du serveur (obligatoire)
+                                        <arg2> = Le nombre maximum d'operations que le repartiteur peut envoyer a ce serveur (obligatoire)
+                                        <arg3> = Le % m pour la fiabilite du serveur. Doit etre entre 0 et 100 (obligatoire)
+                                        <arg4> = l'adresse IP du serveur (optionnel)
+                Ex: ./serveurCalcul.sh s1 5 0 192.168.12.43
+                
+                3. Repertoire de noms : commande "./repertoireNoms.sh <arg1>" a partir du dossier central
+                                        <arg1> = L'adresse IP du repertoire (optionnel)
+                Ex: ./repertoireNoms.sh 192.168.12.44
+                
+                4. Repartiteur : commande "./repartiteur.sh <arg1>" a partir du dossier central
+                                        <arg1> = Le fichier d'operations. Ils sont dans le repertoire "operations" (obligatoire)
+                Ex: ./repartiteur.sh operations-216
+
+Important :
+                1. Il est important de specifier dans serverList/servers.txt le nom des serveurs instantier et leur hostname.
+                   Les informations du fichier doivent concorder avec les informations entrees lors de l'execution des serveurs.
+                2. L'adresse IP du repertoire de noms (hostname) doit etre preciser dans la variable REPERTOIRE_IP du code des classes
+                   ServeurCalcul et Repartiteur.
+                3. Les serveurs de calculs et repertoire de noms doivent etre partie/executer avant le repartiteur.
+                4. Pour changer le mode securise, il y a un attribut boolean dans src/repartiteur/repartiteur.java qui doit etre changer (SECURE_MODE).
+                5. Les fichiers d'operations doivent se trouver dans le dossier "operations". 
+                   Seulement le nom (pas le chemin) doit etre fournie en parametre au repartiteur.
+                6. Si <arg5> et <arg1> de serveur calcul et repertoire de noms (les arg optionnels) ne sont pas fournis, ces serveurs s'executeront sur 127.0.0.1
