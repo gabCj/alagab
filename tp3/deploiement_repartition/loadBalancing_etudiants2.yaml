@@ -1,0 +1,142 @@
+heat_template_version: 2014-10-16
+
+description: A template to deploy a load balanced web server
+
+parameters:
+    
+  NetID:
+    type: string
+    description: Network ID to use for the server nodes.
+    default: 9ec556ab-d458-470e-96bc-1bab0ef66fb9
+
+  NetID_external:
+    type: string
+    description: Network ID to use for the floating IP.
+    default: 1fa7fade-2722-4677-9e2b-da22d385202b
+
+  image:
+    type: string
+    description: Image utilisee pour les serveurs
+    default: xenial-server-cloudimg-amd64-disk1
+
+  flavor:
+    type: string
+    description: Flavor utilisee par les serveurs
+    default: 2048-10-1-1
+
+  subnetId:
+    type: string
+    description: the subnet id for the load balancer
+    default: 4ba321db-9247-454b-9274-faad8ec76461
+
+  lb_port:
+    type: number
+    default: 80
+    description: Port used by the load balancer
+
+    # Vous pouvez ajouter d'autres paramètres
+    # Il faut bien définir les descriptions, les valeurs par default et les contraintes
+
+resources:
+  server1:
+      type: OS::Nova::Server
+      properties:
+        key_name: Lab1Key
+        networks: [{ network: { get_param: NetID }}]
+        image: { get_param: image }
+        flavor: { get_param: flavor }
+
+  server2:
+      type: OS::Nova::Server
+      properties:
+        key_name: Lab1Key
+        networks: [{ network: { get_param: NetID }}]
+        image: { get_param: image }
+        flavor: { get_param: flavor }
+
+  server3:
+      type: OS::Nova::Server
+      properties:
+        key_name: Lab1Key
+        networks: [{ network: { get_param: NetID }}]
+        image: { get_param: image }
+        flavor: { get_param: flavor }
+  
+  pool_member1:
+    type: OS::Neutron::LBaaS::PoolMember
+    properties:
+      pool: { get_resource: mypool }
+      address: { get_attr: [ server1, first_address ]}
+      protocol_port: { get_param: lb_port }
+      subnet: { get_param: subnetId }
+
+  pool_member2:
+    type: OS::Neutron::LBaaS::PoolMember
+    properties:
+      pool: { get_resource: mypool }
+      address: { get_attr: [ server2, first_address ]}
+      protocol_port: { get_param: lb_port }
+      subnet: { get_param: subnetId }
+
+  pool_member3:
+    type: OS::Neutron::LBaaS::PoolMember
+    properties:
+      pool: { get_resource: mypool }
+      address: { get_attr: [ server3, first_address ]}
+      protocol_port: { get_param: lb_port }
+      subnet: { get_param: subnetId }
+
+  mypool:
+      type: OS::Neutron::LBaaS::Pool
+      description: The system nodes
+      properties:
+        lb_algorithm: ROUND_ROBIN
+        loadbalancer: { get_resource: myloadbalancer }
+        protocol: HTTP
+        listener: { get_resource: listener }
+
+  listener:
+    type: OS::Neutron::LBaaS::Listener
+    properties:
+      loadbalancer: { get_resource: myloadbalancer }
+      protocol: HTTP
+      protocol_port: { get_param: lb_port }
+
+  myloadbalancer:
+      type: OS::Neutron::LBaaS::LoadBalancer
+      description: The system load balancer
+      properties:
+        vip_subnet: { get_param: subnetId }
+
+  floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: NetID_external }
+
+  floatingIP_association:
+    type: OS::Neutron::FloatingIPAssociation
+    properties:
+      floatingip_id: { get_resource: floating_ip }
+      port_id: {get_attr: [myloadbalancer, vip_port_id]}
+
+  mymonitor:
+      type: OS::Neutron::LBaaS::HealthMonitor
+      description: The health monitor
+      properties:
+        delay: 15000
+        max_retries: 1
+        pool: { get_resource: mypool }
+        timeout: 5000
+        type: HTTP
+
+outputs:
+  lburl:
+    value:
+      str_replace:
+        template: http://IP_ADDRESS:PORT
+        params:
+          IP_ADDRESS: { get_attr: [ floating_ip, floating_ip_address ] }
+          PORT: { get_param: lb_port }
+    description: >
+      This URL is the "external" URL that can be used to access the
+      load balancer.
