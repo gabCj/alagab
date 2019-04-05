@@ -1,0 +1,45 @@
+heat_template_version: 2015-10-15
+description: Launch a basic instance with Ubuntu Xenial image using the
+             ``2048-10-1-1`` flavor, ``INF8480S2-05`` key,  and one network.
+
+parameters:
+  NetID:
+    type: string
+    description: Network ID to use for the server.
+    default: 9ec556ab-d458-470e-96bc-1bab0ef66fb9
+
+  NetID_external:
+    type: string
+    description: Network ID to use for the floating IP.
+    default: 1fa7fade-2722-4677-9e2b-da22d385202b
+
+resources:
+  server:
+    type: OS::Nova::Server
+    properties:
+      image: xenial-server-cloudimg-amd64-disk1
+      flavor: 2048-10-1-1
+      key_name: Lab1Key
+      networks:
+        - network: { get_param: NetID }
+
+  floatingIP_association:
+    type: OS::Neutron::FloatingIPAssociation
+    properties:
+      floatingip_id: { get_resource: server_floating_ip }
+      port_id: {get_attr: [server, addresses, {get_param: NetID}, 0, port]}
+
+  server_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+        floating_network_id: { get_param: NetID_external }
+
+outputs:
+  instance_name:
+    description: Deploiement script python.
+    value: { get_attr: [ server, name ] }
+  instance_ip:
+    description: Adresse IP.
+    value: { get_attr: [ server, first_address ] }
+
+
