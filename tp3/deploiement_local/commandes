@@ -1,5 +1,4 @@
-1. Pour downloader l'url : Dans openstack -> wget -r https://raw.githubusercontent.com/houssemmh/INF8480-TP3/master/server.py
-2. Pour donner les permissions au script : chmod +x server.py 
-3. Pour install mettre a jours les paquets : sudo apt-get update
-4. Pour installer python : sudo get install python-minimal
-5. Pour executer le script : python server.py
+sudo apt-get update -y
+sudo apt install -y python
+wget "https://raw.githubusercontent.com/houssemmh/INF8480-TP3/master/server.py"
+python server.py
