@@ -1,6 +1,6 @@
 heat_template_version: 2015-10-15
 description: Launch a basic instance with Ubuntu Xenial image using the
-             ``2048-10-1-1`` flavor, ``INF8480S2-05`` key,  and one network.
+             ``2048-10-1-1`` flavor, ``INF8480S2-05``,  and one network.
 
 parameters:
   NetID:
@@ -19,9 +19,14 @@ resources:
     properties:
       image: xenial-server-cloudimg-amd64-disk1
       flavor: 2048-10-1-1
-      key_name: Lab1Key
       networks:
         - network: { get_param: NetID }
+      user_data:  |
+            #!/bin/bash
+            sudo apt-get update -y
+            sudo apt install -y python
+            wget "https://raw.githubusercontent.com/houssemmh/INF8480-TP3/master/server.py"
+            python server.py
 
   floatingIP_association:
     type: OS::Neutron::FloatingIPAssociation
