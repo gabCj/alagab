@@ -1,0 +1,112 @@
+heat_template_version: 2014-10-16
+
+description: A template to deploy a load balanced web server
+
+parameters:
+    
+  NetID:
+    type: string
+    description: Network ID to use for the server nodes.
+    default: 9ec556ab-d458-470e-96bc-1bab0ef66fb9
+
+  subnetId:
+    type: string
+    description: the subnet id for the load balancer and the pool members
+    default: 4ba321db-9247-454b-9274-faad8ec76461
+
+resources:
+
+  server1:
+      type: OS::Nova::Server
+      properties:
+        networks:
+            - network: { get_param: NetID }
+        image: xenial-server-cloudimg-amd64-disk1
+        flavor: 2048-10-1-1
+        user_data:  |
+            #!/bin/bash
+            sudo apt-get update -y
+            sudo apt install -y python
+            wget "https://raw.githubusercontent.com/houssemmh/INF8480-TP3/master/server.py"
+            python server.py
+            
+  server2:
+      type: OS::Nova::Server
+      properties:
+        networks:
+            - network: { get_param: NetID }
+        image: xenial-server-cloudimg-amd64-disk1
+        flavor: 2048-10-1-1
+        user_data:  |
+            #!/bin/bash
+            sudo apt-get update -y
+            sudo apt install -y python
+            wget "https://raw.githubusercontent.com/houssemmh/INF8480-TP3/master/server.py"
+            python server.py
+
+  server3:
+      type: OS::Nova::Server
+      properties:
+        networks:
+            - network: { get_param: NetID }
+        image: xenial-server-cloudimg-amd64-disk1
+        flavor: 2048-10-1-1
+        user_data:  |
+            #!/bin/bash
+            sudo apt-get update -y
+            sudo apt install -y python
+            wget "https://raw.githubusercontent.com/houssemmh/INF8480-TP3/master/server.py"
+            python server.py
+  
+  pool_member1:
+    type: OS::Neutron::LBaaS::PoolMember
+    properties:
+      pool: { get_resource: mypool }
+      address: { get_attr: [ server1, first_address ]}
+      protocol_port: 8080
+      subnet: { get_param: subnetId }
+  pool_member2:
+    type: OS::Neutron::LBaaS::PoolMember
+    properties:
+      pool: { get_resource: mypool }
+      address: { get_attr: [ server2, first_address ]}
+      protocol_port: 8080
+      subnet: { get_param: subnetId }
+  pool_member3:
+    type: OS::Neutron::LBaaS::PoolMember
+    properties:
+      pool: { get_resource: mypool }
+      address: { get_attr: [ server3, first_address ]}
+      protocol_port: 8080
+      subnet: { get_param: subnetId }
+
+  mypool:
+      type: OS::Neutron::LBaaS::Pool
+      description: The system nodes
+      properties:
+        lb_algorithm: ROUND_ROBIN
+        protocol: HTTP
+        listener: { get_resource: listener }
+
+  listener:
+    type: OS::Neutron::LBaaS::Listener
+    properties:
+      loadbalancer: { get_resource: myloadbalancer }
+      protocol: HTTP
+      protocol_port: 80
+
+  myloadbalancer:
+      type: OS::Neutron::LBaaS::LoadBalancer
+      description: The system load balancer
+      properties:
+        vip_subnet: { get_param: subnetId }
+
+  monitor:
+    type: OS::Neutron::LBaaS::HealthMonitor
+    properties:
+      delay: 15
+      type: PING
+      timeout: 5
+      max_retries: 1
+      pool: { get_resource: mypool }
+
